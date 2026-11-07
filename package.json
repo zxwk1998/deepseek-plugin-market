@@ -1,0 +1,44 @@
+{
+  "name": "deepseek-plugin-market",
+  "version": "0.1.0",
+  "private": true,
+  "description": "DeepSeek Harness（DSH）插件市场 —— 五维评分、中文目录、静态导出与 SEO 就绪",
+  "scripts": {
+    "dev": "node scripts/build-index.mjs && next dev",
+    "build": "node scripts/build-index.mjs && next build && node scripts/postbuild.mjs",
+    "start": "next start",
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "index": "node scripts/build-index.mjs",
+    "data": "node scripts/build-data.mjs",
+    "sync": "node scripts/sync-data.mjs",
+    "token": "node scripts/set-token.mjs"
+  },
+  "dependencies": {
+    "class-variance-authority": "^0.7.1",
+    "cmdk": "^1.1.1",
+    "cn": "^0.5.2",
+    "geist": "^1.9.1",
+    "lucide-react": "^1.69.0",
+    "next": "15.5.29",
+    "next-themes": "^0.4.6",
+    "radix-ui": "^1.8.1",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "shadcn": "^4.23.0",
+    "sonner": "^2.0.8",
+    "tw-animate-css": "^1.4.0"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3",
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "15.5.29",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  },
+  "packageManager": "pnpm@12.14.0"
+}

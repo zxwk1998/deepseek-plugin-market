@@ -1,0 +1,279 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ============================================================
+   设计令牌
+   ------------------------------------------------------------
+   取向：暖白纸面 + 墨黑文字 + 单一品牌蓝。不使用大面积渐变、
+   不堆叠多层阴影 —— 层次靠 1px 细线、留白与字号对比建立。
+   ============================================================ */
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  --font-sans: var(--font-geist-sans), "PingFang SC", "HarmonyOS Sans SC",
+    "Hiragino Sans GB", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+  --font-mono: var(--font-geist-mono), "SF Mono", "JetBrains Mono", ui-monospace,
+    "PingFang SC", monospace;
+  --font-heading: var(--font-geist-sans), "PingFang SC", "HarmonyOS Sans SC",
+    "Microsoft YaHei", system-ui, sans-serif;
+
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+
+  /* 品牌与语义色 */
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-brand-soft: var(--brand-soft);
+  --color-hairline: var(--hairline);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+
+  --radius-sm: calc(var(--radius) * 0.5);
+  --radius-md: calc(var(--radius) * 0.75);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.9);
+  --radius-3xl: calc(var(--radius) * 2.5);
+  --radius-4xl: calc(var(--radius) * 3);
+}
+
+:root {
+  --background: oklch(0.991 0.002 106);
+  --foreground: oklch(0.196 0.014 265);
+
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.196 0.014 265);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.196 0.014 265);
+
+  --primary: oklch(0.545 0.212 265);
+  --primary-foreground: oklch(0.995 0 0);
+
+  --secondary: oklch(0.966 0.004 265);
+  --secondary-foreground: oklch(0.29 0.022 265);
+  --muted: oklch(0.968 0.003 265);
+  --muted-foreground: oklch(0.523 0.014 265);
+  --accent: oklch(0.958 0.012 265);
+  --accent-foreground: oklch(0.29 0.03 265);
+
+  --destructive: oklch(0.577 0.196 25);
+  --success: oklch(0.56 0.128 152);
+  --warning: oklch(0.66 0.148 72);
+
+  --border: oklch(0.918 0.005 265);
+  --input: oklch(0.905 0.006 265);
+  --ring: oklch(0.545 0.212 265);
+
+  --brand: oklch(0.545 0.212 265);
+  --brand-foreground: oklch(0.995 0 0);
+  --brand-soft: oklch(0.958 0.026 265);
+  --hairline: oklch(0.196 0.014 265 / 9%);
+
+  --chart-1: oklch(0.545 0.212 265);
+  --chart-2: oklch(0.66 0.15 215);
+  --chart-3: oklch(0.62 0.14 160);
+  --chart-4: oklch(0.72 0.15 75);
+  --chart-5: oklch(0.6 0.18 20);
+
+  --radius: 0.75rem;
+
+  --sidebar: oklch(0.985 0.002 106);
+  --sidebar-foreground: oklch(0.196 0.014 265);
+  --sidebar-primary: oklch(0.545 0.212 265);
+  --sidebar-primary-foreground: oklch(0.995 0 0);
+  --sidebar-accent: oklch(0.966 0.004 265);
+  --sidebar-accent-foreground: oklch(0.29 0.022 265);
+  --sidebar-border: oklch(0.918 0.005 265);
+  --sidebar-ring: oklch(0.545 0.212 265);
+}
+
+.dark {
+  --background: oklch(0.168 0.011 265);
+  --foreground: oklch(0.955 0.004 265);
+
+  --card: oklch(0.201 0.013 265);
+  --card-foreground: oklch(0.955 0.004 265);
+  --popover: oklch(0.213 0.013 265);
+  --popover-foreground: oklch(0.955 0.004 265);
+
+  --primary: oklch(0.69 0.166 265);
+  --primary-foreground: oklch(0.17 0.03 265);
+
+  --secondary: oklch(0.246 0.012 265);
+  --secondary-foreground: oklch(0.94 0.004 265);
+  --muted: oklch(0.235 0.011 265);
+  --muted-foreground: oklch(0.716 0.014 265);
+  --accent: oklch(0.263 0.016 265);
+  --accent-foreground: oklch(0.955 0.004 265);
+
+  --destructive: oklch(0.7 0.176 22);
+  --success: oklch(0.72 0.13 152);
+  --warning: oklch(0.78 0.13 75);
+
+  --border: oklch(0.995 0 0 / 10%);
+  --input: oklch(0.995 0 0 / 14%);
+  --ring: oklch(0.69 0.166 265);
+
+  --brand: oklch(0.69 0.166 265);
+  --brand-foreground: oklch(0.17 0.03 265);
+  --brand-soft: oklch(0.3 0.048 265);
+  --hairline: oklch(0.995 0 0 / 10%);
+
+  --chart-1: oklch(0.69 0.166 265);
+  --chart-2: oklch(0.74 0.13 215);
+  --chart-3: oklch(0.74 0.13 160);
+  --chart-4: oklch(0.8 0.13 78);
+  --chart-5: oklch(0.7 0.16 20);
+
+  --sidebar: oklch(0.19 0.012 265);
+  --sidebar-foreground: oklch(0.955 0.004 265);
+  --sidebar-primary: oklch(0.69 0.166 265);
+  --sidebar-primary-foreground: oklch(0.17 0.03 265);
+  --sidebar-accent: oklch(0.25 0.012 265);
+  --sidebar-accent-foreground: oklch(0.955 0.004 265);
+  --sidebar-border: oklch(0.995 0 0 / 10%);
+  --sidebar-ring: oklch(0.69 0.166 265);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  html {
+    @apply font-sans antialiased;
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "cv11", "ss01";
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background: var(--brand);
+    color: var(--brand-foreground);
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-heading text-balance;
+    letter-spacing: -0.022em;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      transition-duration: 0.001ms !important;
+    }
+  }
+}
+
+@layer components {
+  /* 页面统一容器：移动端 20px 边距，桌面 32px，最大宽度 1240 */
+  .shell {
+    @apply mx-auto w-full max-w-[1240px] px-5 md:px-8;
+  }
+
+  /* 小标签（等宽、字距拉开）—— 全站唯一允许的"全大写"用法 */
+  .eyebrow {
+    @apply font-mono text-[11px] font-medium tracking-[0.18em] text-muted-foreground uppercase;
+  }
+
+  /* 细分割线：比 border 更轻，用于信息流分隔 */
+  .hairline {
+    @apply border-t border-[var(--hairline)];
+  }
+
+  /* 数字表格化：评分、星星等数值等宽，避免跳动 */
+  .tnum {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* 首屏背景：极淡网点，替代渐变光斑 */
+  .hero-surface {
+    background-image: radial-gradient(var(--hairline) 1px, transparent 1px);
+    background-size: 22px 22px;
+    background-position: center top;
+    mask-image: linear-gradient(to bottom, black 0%, black 55%, transparent 100%);
+  }
+
+  /* 卡片：1px 边 + 悬停轻微抬起，不做玻璃/发光 */
+  .card-lift {
+    @apply transition-[border-color,box-shadow,transform] duration-200 ease-out;
+  }
+  .card-lift:hover {
+    @apply border-foreground/20;
+    box-shadow:
+      0 1px 2px oklch(0.2 0.02 265 / 6%),
+      0 8px 24px -12px oklch(0.2 0.02 265 / 18%);
+    transform: translateY(-1px);
+  }
+  .dark .card-lift:hover {
+    box-shadow:
+      0 1px 2px oklch(0 0 0 / 40%),
+      0 8px 24px -12px oklch(0 0 0 / 60%);
+  }
+}
+
+@layer utilities {
+  .text-pretty {
+    text-wrap: pretty;
+  }
+  /* 移动端隐藏横向滚动条但保留滚动能力（标签条） */
+  .no-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}

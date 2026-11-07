@@ -1,0 +1,52 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files (can opt-in for committing if needed)
+.env*
+# 模板必须入库，否则别人不知道该配什么
+!.env.example
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# 生成的检索索引（由 scripts/build-index.mjs 在 dev/build 前重建）
+/public/catalog.json
+
+# 采集原始产物（体积大，可由 pnpm sync 随时重建）
+/data/raw-github.json
+# 采集中间缓存：搜索结果（6h TTL）与 README（按 pushed_at 失效）
+/data/.search-cache.json
+/data/.readme-cache.json
