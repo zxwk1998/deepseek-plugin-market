@@ -102,6 +102,17 @@ function main() {
   console.log(`› 同步 ${OUT}/ → ${USER}@${HOST}:${TARGET}`);
   const rsyncArgs = [
     "-az",
+    /*
+     * --whole-file：跳过 rsync 的差异算法。
+     * 每个页面 HTML 都是重新渲染的（分数/排序/相关推荐全会变），几乎 100% 内容不同，
+     * 走增量时每个文件都要来回一次校验和 —— 5000 个文件 × RTT 就是好几分钟，
+     * 而实际能省下的字节几乎为 0。整文件直传反而更快。
+     * --inplace：服务端原地写，省掉每个文件建临时文件 + rename 的开销。
+     * --compress-level=1：HTML 压缩比本身就高，level 1 与 9 体积差 3%，CPU 差 5 倍。
+     */
+    "--whole-file",
+    "--inplace",
+    "--compress-level=1",
     "--human-readable",
     "--stats",
     // 宝塔在站点根自己维护的文件，不能传也不能删：
