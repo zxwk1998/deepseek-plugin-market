@@ -21,6 +21,8 @@ export function websiteJsonLd() {
     url: SITE.url,
     description: SITE.description,
     inLanguage: "zh-CN",
+    // 与代码仓库互指：让搜索引擎把"站点"和"项目"识别为同一实体，而不是两个孤立页面
+    sameAs: [SITE.repo],
     potentialAction: {
       "@type": "SearchAction",
       target: {

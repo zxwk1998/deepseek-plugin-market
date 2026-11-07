@@ -2,6 +2,7 @@
   "name": "deepseek-plugin-market",
   "version": "0.1.0",
   "private": true,
+  "homepage": "https://deepseek.vuejs-core.cn",
   "description": "DeepSeek Harness（DSH）插件市场 —— 五维评分、中文目录、静态导出与 SEO 就绪",
   "scripts": {
     "dev": "node scripts/build-index.mjs && next dev",

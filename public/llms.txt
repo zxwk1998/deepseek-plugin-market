@@ -1,0 +1,34 @@
+# DeepSeek 插件市场
+
+> 面向 DeepSeek Harness（DSH）的中文插件目录。收录 2,500+ 个插件、cordis 扩展与 Agent Skill，
+> 用五维实用评分（维护活跃 / 实用度 / 生态热度 / 上手便捷 / 信号质量）替代 Star 数排行，
+> 每条记录附中文简介、可直接复制的安装命令与安装风险提示。数据每天 06:00（北京时间）从 GitHub 重新采集。
+
+站点为纯静态导出，全部页面在构建期预渲染为 HTML，无需登录即可访问。
+
+## 核心页面
+
+- [首页 / 今日榜单](https://deepseek.vuejs-core.cn/): 当天高分插件与按意图分区的入口
+- [全部插件](https://deepseek.vuejs-core.cn/plugins/): 2,500+ 条可筛选目录，按评分 / 更新时间 / 类型排序
+- [分类](https://deepseek.vuejs-core.cn/categories/): 8 个意图分区，一个插件可属多个分区
+- [插件详情](https://deepseek.vuejs-core.cn/plugin/alchaincyf-nuwa-skill/): 详情页样例，含评分拆解、安装命令、风险提示
+- [评分方法](https://deepseek.vuejs-core.cn/guide/): 五维权重与每一维的判定依据
+- [关于](https://deepseek.vuejs-core.cn/about/): 数据来源、更新机制与免责说明
+
+## 数据说明
+
+- 字段：`slug`、`id`（owner/repo）、`type`（skill / cordis-plugin）、`score`（total + breakdown + confidence）、
+  `install`（方式、是否需要配置、风险标记、命令）、`readme`（清洗后纯文本）
+- 评分权重：维护活跃 0.25、实用度 0.25、生态热度 0.20、上手便捷 0.15、信号质量 0.15
+- 生态热度取「star 折算分」与「npm 近月下载量折算分」中的较大值
+- 更新频率：每日一次，CI 采集 → 校验 → 构建 → 发布
+
+## 其他
+
+- [站点地图](https://deepseek.vuejs-core.cn/sitemap.xml)
+- [抓取规则](https://deepseek.vuejs-core.cn/robots.txt)
+- [GitHub 仓库](https://github.com/zxwk1998/deepseek-plugin-market)
+
+## 说明
+
+本项目为第三方整理，与 DeepSeek 官方无隶属关系。插件由各自作者维护，安装前请阅读其 README 与许可证。

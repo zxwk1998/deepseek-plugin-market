@@ -20,12 +20,17 @@ export const SITE = {
   ],
   /**
    * 站点根地址：静态导出时无法从请求推断域名，必须显式配置。
-   * 部署到你自己的域名时，构建前设置 NEXT_PUBLIC_SITE_URL 即可。
+   *
+   * 默认值必须是**线上真实域名**，不能是 github.io：
+   * canonical / sitemap / robots 全部由它派生，一旦构建时漏设 NEXT_PUBLIC_SITE_URL，
+   * 全站 2500+ 页面的 canonical 就会指向一个 404 的镜像地址，搜索引擎据此判定
+   * "原页面不在本站"，收录直接归零。宁可默认指向生产域名，也不留一个"看起来像示例"
+   * 的占位域名。
+   *
+   * GitHub Pages 只是可选镜像，其工作流会显式覆盖该变量（见 .github/workflows/deploy.yml），
+   * 不会用到这里的默认值。
    */
-  url: (process.env.NEXT_PUBLIC_SITE_URL || "https://zxwk1998.github.io/deepseek-plugin-market").replace(
-    /\/$/,
-    "",
-  ),
+  url: (process.env.NEXT_PUBLIC_SITE_URL || "https://deepseek.vuejs-core.cn").replace(/\/$/, ""),
   locale: "zh-CN",
   author: "zxwk1998",
   repo: "https://github.com/zxwk1998/deepseek-plugin-market",
