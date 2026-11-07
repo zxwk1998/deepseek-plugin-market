@@ -14,7 +14,7 @@
  *   node scripts/build-data.mjs --src data/raw-github.json --limit 1600
  *   node scripts/build-data.mjs --src /path/to/plugins.json --limit 1600   # legacy
  */
-import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { scoreRepo, stripHtml, stripEmoji } from "./score.mjs";
 
@@ -27,6 +27,22 @@ const getArg = (name, fallback = "") => {
 const SRC = getArg("src", "data/raw-github.json");
 const LIMIT = Number(getArg("limit", "1600"));
 const OUT_DIR = resolve(getArg("out", "data"));
+/**
+ * CC0 富化索引（scripts/fetch-cc0.mjs 产出）。可选：
+ * 文件不存在就跳过富化，站点照常构建 —— 富化是增强，不是依赖。
+ */
+const CC0_PATH = resolve(getArg("cc0", "data/cc0-index.json"));
+let cc0 = null;
+try {
+  if (existsSync(CC0_PATH)) {
+    cc0 = JSON.parse(readFileSync(CC0_PATH, "utf8"));
+    console.log(`· 富化索引已载入：${cc0.repoCount} 个仓库 / ${cc0.total} 个包`);
+  } else {
+    console.warn("! 未找到富化索引，跳过中文简介与能力标注（不影响构建）");
+  }
+} catch (err) {
+  console.warn(`! 富化索引读取失败（${err.message}），跳过富化`);
+}
 
 /** 平台级噪声标签：出现在卡片上等于没信息 */
 const NOISE_TAGS = new Set([
@@ -60,6 +76,11 @@ function fromGithub(payload) {
   return payload.repos
     .map((r) => {
       const s = scoreRepo(r, now);
+      // 富化层按仓库全名（小写）关联；同一仓库可能有多个包，取下载量最大的作主条目
+      const x = cc0?.repos?.[String(r.fullName).toLowerCase()] ?? null;
+      const categoryLabel = x?.category ? (cc0?.categories?.[x.category]?.zh ?? null) : null;
+      const commands = s.commands.length ? s.commands : x?.install ? [x.install] : [];
+
       return {
         id: r.fullName,
         type: s.type,
@@ -73,11 +94,22 @@ function fromGithub(payload) {
         homepage: r.homepage || null,
         curated: false,
         description: stripEmoji(r.description) || r.description || "",
-        // 自采数据没有中文翻译：留空，前台回落到原始英文简介（不机器硬翻）
-        descriptionZh: null,
+        // 中文简介来自 CC0 目录（人工/精译级别），没有就回落英文原文
+        descriptionZh: x?.zh ? stripEmoji(x.zh) : null,
         tags: cleanTags(s.tags),
         pushedAt: r.pushedAt,
         createdAt: r.createdAt,
+        /* ---- 以下为富化字段：可能为 null，前端必须做降级 ---- */
+        npm: x?.npm ?? null,
+        npmVersion: x?.version ?? null,
+        downloads: Number.isFinite(x?.downloads) ? x.downloads : null,
+        downloadsRange: x?.downloadsStart && x?.downloadsEnd ? `${x.downloadsStart}~${x.downloadsEnd}` : null,
+        capabilities: x?.cap ?? [],
+        redLines: x?.red ?? [],
+        cc0Category: x?.category ?? null,
+        cc0CategoryLabel: categoryLabel,
+        /** 该仓库下共有几个包（>1 说明是 monorepo，当前只收录主包） */
+        packageCount: x?.packageCount ?? 1,
         score: {
           total: s.total,
           breakdown: s.breakdown,
@@ -85,12 +117,13 @@ function fromGithub(payload) {
           explanation: s.explanation,
         },
         install: {
-          method: s.type === "skill" ? "skills-add" : "pnpm-profile",
+          // 有 npm 包就说明是标准分发形态，安装方式与 README 里捞命令不是一回事
+          method: x?.npm ? "dsh-plugin-add" : s.type === "skill" ? "skills-add" : "pnpm-profile",
           needsConfig: s.needsConfig,
           usageNeedsConfig: s.needsConfig,
           risky: s.risky,
           riskyReasons: s.riskyReasons,
-          commands: s.commands,
+          commands,
         },
         readme: stripHtml(r.readme ?? "").slice(0, 900),
         archived: r.archived ?? false,
@@ -214,6 +247,11 @@ function aggregate(list, sourceMeta) {
     },
     curated: list.filter((p) => p.curated).length,
     avgScore: Math.round(scoreSum / Math.max(list.length, 1)),
+    /** 富化覆盖度：用于确认中文简介/下载量/能力标注是否真的接上了 */
+    enriched: list.filter((p) => p.descriptionZh).length,
+    withDownloads: list.filter((p) => (p.downloads ?? 0) > 0).length,
+    withCapabilities: list.filter((p) => (p.capabilities ?? []).length > 0).length,
+    monorepo: list.filter((p) => (p.packageCount ?? 1) > 1).length,
     topTags: [...tagCount.entries()]
       .sort((a, b) => b[1] - a[1])
       .slice(0, 24)
@@ -251,5 +289,8 @@ console.log(`✓ 来源 ${meta.source} · 候选 ${candidates.length} → 收录
 console.log(`  data/plugins.json ${mb} MB`);
 console.log(
   `  skill ${meta.types.skill} · plugin ${meta.types.plugin} · 均分 ${meta.avgScore} · 快照 ${meta.generatedAt.slice(0, 10)}`,
+);
+console.log(
+  `  富化：中文简介 ${meta.enriched} · 下载量 ${meta.withDownloads} · 能力标注 ${meta.withCapabilities} · 多包仓库 ${meta.monorepo}`,
 );
 console.log(`  标签 ${meta.topTags.slice(0, 8).map((t) => `${t.name}(${t.count})`).join(" ")}`);

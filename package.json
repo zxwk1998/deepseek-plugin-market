@@ -15,7 +15,8 @@
     "token": "node scripts/set-token.mjs",
     "deploy": "node scripts/deploy.mjs",
     "deploy:build": "node scripts/deploy.mjs --build",
-    "ping": "node scripts/ping-search.mjs"
+    "ping": "node scripts/ping-search.mjs",
+    "cc0": "node scripts/fetch-cc0.mjs"
   },
   "dependencies": {
     "class-variance-authority": "^0.7.1",

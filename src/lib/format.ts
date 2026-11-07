@@ -50,7 +50,69 @@ export function installMethodLabel(method: string): string {
       return "克隆到 skills 目录";
     case "pnpm-profile":
       return "通过 profile 安装";
+    case "dsh-plugin-add":
+      return "npm 包安装";
     default:
       return "通用 Git 克隆";
   }
+}
+
+/**
+ * 下载量：0 也要显示成「0」，而不是「无」——
+ * 「有包但一个月没人下载」本身就是判断依据，和「没有 npm 包」必须区分开。
+ */
+export function formatDownloads(dl: number | null | undefined): string {
+  if (dl === null || dl === undefined) return "—";
+  if (dl >= 10_000) return `${(dl / 10_000).toFixed(1).replace(/\.0$/, "")} 万`;
+  return formatNumber(dl);
+}
+
+/**
+ * 能力标签的中文化。
+ * 这套标签来自上游的静态能力扫描（读文件/写文件/联网/执行命令…），
+ * 比"这插件有风险吗"的布尔值有用得多：用户能看出它到底要动什么。
+ */
+const CAPABILITY_LABELS: Record<string, { label: string; tone: "read" | "write" | "net" | "exec" | "secret" | "other" }> = {
+  "fs-read": { label: "读取文件", tone: "read" },
+  "fs-write": { label: "写入文件", tone: "write" },
+  network: { label: "访问网络", tone: "net" },
+  shell: { label: "执行命令", tone: "exec" },
+  env: { label: "读取环境变量", tone: "read" },
+  credentials: { label: "读取凭据", tone: "secret" },
+  llm: { label: "调用模型", tone: "other" },
+  "host-runtime": { label: "访问宿主运行时", tone: "other" },
+  "dynamic-code": { label: "动态执行代码", tone: "exec" },
+  subagent: { label: "派生子代理", tone: "other" },
+};
+
+export function capabilityLabel(slug: string): string {
+  return CAPABILITY_LABELS[slug]?.label ?? slug;
+}
+
+export function capabilityTone(slug: string): "read" | "write" | "net" | "exec" | "secret" | "other" {
+  return CAPABILITY_LABELS[slug]?.tone ?? "other";
+}
+
+/**
+ * 安全红线中文化。
+ * 上游给的是英文判定句，直接展示等于把机器判断甩给用户；
+ * 已知类型逐条翻译，未知形态保留英文原文但加前缀，保证不误导。
+ */
+export function redLineLabel(text: string): string {
+  const t = String(text);
+  if (/reads credentials\/secrets AND has network access/i.test(t)) {
+    return "既读取凭据/密钥，又有网络访问 —— 存在外传可能";
+  }
+  if (/runs code at install time/i.test(t)) {
+    return "安装时执行代码（postinstall 脚本）";
+  }
+  if (/uses plaintext http:\/\//i.test(t)) {
+    const host = t.match(/http:\/\/([^\s,，]+)/i)?.[1] ?? "";
+    return `以明文 http 连接 ${host}（可被中间人篡改）`;
+  }
+  if (/uses literal IP/i.test(t)) {
+    const ip = t.match(/\b\d{1,3}(?:\.\d{1,3}){3}\b/)?.[0] ?? "";
+    return `直接用 IP 地址 ${ip} 联网，绕过域名与证书校验`;
+  }
+  return t;
 }

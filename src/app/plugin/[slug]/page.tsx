@@ -10,10 +10,14 @@ import { SITE, absUrl } from "@/lib/site";
 import { categoriesOf, SCORE_DIMENSIONS } from "@/lib/taxonomy";
 import { SNAPSHOT, allSlugs, getPlugin, plugins, relatedPlugins } from "@/lib/data";
 import {
+  capabilityLabel,
+  capabilityTone,
   formatCount,
   formatDate,
+  formatDownloads,
   formatNumber,
   installMethodLabel,
+  redLineLabel,
   relativeFrom,
   typeLabel,
 } from "@/lib/format";
@@ -110,6 +114,17 @@ export default async function PluginPage({ params }: { params: Promise<{ slug: s
                 安装含风险命令
               </span>
             )}
+            {(plugin.redLines?.length ?? 0) > 0 && (
+              <span className="inline-flex items-center gap-1 rounded border border-destructive/30 bg-destructive/10 px-1.5 py-0.5 text-[10px] text-destructive">
+                <ShieldAlert className="size-2.5" />
+                {plugin.redLines!.length} 项安全红线
+              </span>
+            )}
+            {(plugin.packageCount ?? 1) > 1 && (
+              <span className="rounded border border-[var(--hairline)] px-1.5 py-0.5 font-mono text-[9.5px] tracking-[0.06em] text-muted-foreground">
+                多包仓库 · 共 {plugin.packageCount} 个
+              </span>
+            )}
           </div>
 
           <h1 className="mt-3 text-[30px] leading-[1.1] font-semibold tracking-[-0.032em] md:text-[40px]">
@@ -148,11 +163,16 @@ export default async function PluginPage({ params }: { params: Promise<{ slug: s
           )}
 
           {/* 速览：移动端侧栏在下方，关键决策信息必须首屏可见 */}
-          <dl className="mt-6 grid max-w-[640px] grid-cols-2 gap-x-8 gap-y-3 border-t border-[var(--hairline)] pt-4 sm:grid-cols-4">
+          <dl className="mt-6 grid max-w-[680px] grid-cols-2 gap-x-8 gap-y-3 border-t border-[var(--hairline)] pt-4 sm:grid-cols-3 lg:grid-cols-5">
             {[
               { label: "形态", value: plugin.type === "skill" ? "Skill 技能" : "Plugin 插件" },
               { label: "安装", value: installMethodLabel(plugin.install.method) },
               { label: "需要密钥", value: plugin.install.needsConfig ? "是" : "否" },
+              {
+                label: "近月下载",
+                // 没有 npm 分发时显示「—」，不要写成 0：那是两种完全不同的处境
+                value: plugin.downloads == null ? "—" : formatDownloads(plugin.downloads),
+              },
               { label: "最近推送", value: relativeFrom(plugin.pushedAt, SNAPSHOT) },
             ].map((f) => (
               <div key={f.label}>
@@ -269,6 +289,73 @@ export default async function PluginPage({ params }: { params: Promise<{ slug: s
             )}
           </section>
 
+          {/* ============ 安全能力：决定"敢不敢装"的信息，必须在正文里 ============ */}
+          {((plugin.capabilities?.length ?? 0) > 0 || (plugin.redLines?.length ?? 0) > 0) && (
+            <section
+              id="safety"
+              className="mt-10 scroll-mt-24 border-t border-[var(--hairline)] pt-8"
+              aria-labelledby="safety-heading"
+            >
+              <h2 id="safety-heading" className="text-[17px] font-semibold tracking-[-0.02em]">
+                安全能力
+              </h2>
+              <p className="mt-1 text-[12px] text-muted-foreground">
+                静态扫描源码得到的权限画像 —— 回答的是「它要动什么」，而不是「它好不好」
+              </p>
+
+              {(plugin.capabilities?.length ?? 0) > 0 && (
+                <ul className="mt-4 flex flex-wrap gap-1.5">
+                  {plugin.capabilities!.map((cap) => {
+                    const tone = capabilityTone(cap);
+                    const style =
+                      tone === "secret"
+                        ? "border-destructive/30 bg-destructive/8 text-destructive"
+                        : tone === "exec"
+                          ? "border-warning/30 bg-warning/8 text-warning"
+                          : tone === "net"
+                            ? "border-brand/25 bg-brand-soft text-brand"
+                            : "border-[var(--hairline)] bg-card text-muted-foreground";
+                    return (
+                      <li
+                        key={cap}
+                        className={`rounded border px-2 py-1 text-[11.5px] ${style}`}
+                        title={cap}
+                      >
+                        {capabilityLabel(cap)}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+
+              {(plugin.redLines?.length ?? 0) > 0 ? (
+                <div className="mt-4 rounded-lg border border-destructive/30 bg-destructive/6 p-4">
+                  <p className="flex items-center gap-2 text-[12.5px] font-medium text-destructive">
+                    <ShieldAlert className="size-4" />
+                    发现 {plugin.redLines!.length} 项需要留意的行为
+                  </p>
+                  <ul className="mt-2 space-y-1.5 text-[12px] leading-relaxed text-foreground/80">
+                    {plugin.redLines!.map((line) => (
+                      <li key={line} className="flex gap-2">
+                        <span aria-hidden className="mt-[7px] size-1 shrink-0 rounded-full bg-destructive/60" />
+                        <span>{redLineLabel(line)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : (
+                <p className="mt-4 rounded-lg border border-[var(--hairline)] bg-muted/40 p-3 text-[12px] text-muted-foreground">
+                  未发现已知红线（明文传输、安装期执行代码、凭据外传等）。
+                </p>
+              )}
+
+              <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground/80">
+                能力与红线来自 awesome-dsh-plugin 的静态扫描结果（CC0 公有领域），本站未逐行复核源码；
+                它只覆盖能被静态识别的模式，不等于安全审计结论。
+              </p>
+            </section>
+          )}
+
           <section className="mt-10 border-t border-[var(--hairline)] pt-8" aria-labelledby="score-note-heading">
             <h2 id="score-note-heading" className="text-[17px] font-semibold tracking-[-0.02em]">
               为什么是这个分数
@@ -360,8 +447,17 @@ export default async function PluginPage({ params }: { params: Promise<{ slug: s
           <dl className="mt-4 rounded-xl border bg-card p-5 text-[12px]">
             <MetaRow label="类型" value={plugin.type === "skill" ? "Skill（技能）" : "Plugin（插件）"} />
             <MetaRow label="安装方式" value={installMethodLabel(plugin.install.method)} />
+            {plugin.npm && (
+              <MetaRow label="npm 包" value={`${plugin.npm}${plugin.npmVersion ? `@${plugin.npmVersion}` : ""}`} />
+            )}
             <MetaRow label="需要密钥" value={plugin.install.needsConfig ? "是" : "否"} />
             <MetaRow label="Star" value={formatNumber(plugin.stars)} />
+            {plugin.downloads != null && (
+              <MetaRow
+                label="近月下载"
+                value={`${formatNumber(plugin.downloads)}${plugin.downloadsRange ? `（${plugin.downloadsRange}）` : ""}`}
+              />
+            )}
             <MetaRow label="Fork" value={formatNumber(plugin.forks)} />
             <MetaRow label="语言" value={plugin.language ?? "—"} />
             <MetaRow label="许可证" value={plugin.license ?? "未声明"} />

@@ -123,6 +123,8 @@ async function main() {
     ]);
     const count = validateCollected();
     if (DRY_RUN) return console.log(`· --dry-run，未写入目录数据（采集 ${count} 个）`);
+    // 富化层：拉 CC0 目录补中文简介/下载量/能力标注。抓不到不阻断（脚本内部降级）
+    run("fetch-cc0.mjs", hasFlag("refresh") ? ["--refresh"] : []);
     run("build-data.mjs", ["--src", RAW, "--limit", LIMIT]);
     run("build-index.mjs");
   }

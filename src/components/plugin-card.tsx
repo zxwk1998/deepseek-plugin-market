@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { ArrowUpRight, Star } from "lucide-react";
+import { ArrowUpRight, Download, Star } from "lucide-react";
 import { ScoreBadge } from "@/components/score";
-import { formatCount, relativeFrom, scoreTier } from "@/lib/format";
+import { formatCount, formatDownloads, relativeFrom, scoreTier } from "@/lib/format";
 import { SNAPSHOT } from "@/lib/snapshot";
 import type { Plugin } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -69,8 +69,22 @@ export function PluginCard({ plugin, showTags = true }: { plugin: Plugin; showTa
           {formatCount(plugin.stars)}
           <span className="sr-only">个 star</span>
         </span>
-        {plugin.language && <span aria-hidden="true" className="text-border">·</span>}
-        {plugin.language && <span>{plugin.language}</span>}
+        {(plugin.downloads ?? 0) >= 100 ? (
+          // 下载量比 star 更接近真实使用强度，有就优先占位；没有则退回显示语言
+          <>
+            <span aria-hidden="true" className="text-border">·</span>
+            <span className="inline-flex items-center gap-1 tnum" title="近一个月 npm 下载量">
+              <Download className="size-3" aria-hidden="true" />
+              {formatDownloads(plugin.downloads)}
+              <span className="sr-only">次月下载</span>
+            </span>
+          </>
+        ) : (
+          <>
+            {plugin.language && <span aria-hidden="true" className="text-border">·</span>}
+            {plugin.language && <span>{plugin.language}</span>}
+          </>
+        )}
         <span aria-hidden="true" className="text-border">·</span>
         <span>{relativeFrom(plugin.pushedAt, SNAPSHOT)}</span>
         <ArrowUpRight
@@ -107,6 +121,15 @@ export function PluginRow({ plugin }: { plugin: Plugin }) {
           <Star className="size-3" aria-hidden="true" />
           {formatCount(plugin.stars)}
         </span>
+        {(plugin.downloads ?? 0) >= 100 && (
+          <span
+            className="hidden w-20 shrink-0 items-center gap-1 text-[11px] text-muted-foreground lg:flex tnum"
+            title="近一个月 npm 下载量"
+          >
+            <Download className="size-3" aria-hidden="true" />
+            {formatDownloads(plugin.downloads)}
+          </span>
+        )}
         <span className="w-9 text-right">
           <ScoreBadge total={plugin.score.total} tier={tier} size="sm" />
         </span>

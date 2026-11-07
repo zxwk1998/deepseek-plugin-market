@@ -21,8 +21,10 @@ const index = plugins.map((p) => ({
   g: p.tags,
   d: (p.descriptionZh || p.description || "").slice(0, 160),
   u: p.pushedAt,
-  f: (p.install.needsConfig ? 1 : 0) | (p.install.risky ? 2 : 0) | (p.curated ? 4 : 0),
+  f: (p.install.needsConfig ? 1 : 0) | (p.install.risky ? 2 : 0) | (p.curated ? 4 : 0) | ((p.redLines ?? []).length ? 8 : 0),
   l: p.language,
+  /** 近一月下载量：卡片上展示"真实使用强度"，0 表示无 npm 分发 */
+  dl: p.downloads ?? 0,
 }));
 
 mkdirSync("public", { recursive: true });

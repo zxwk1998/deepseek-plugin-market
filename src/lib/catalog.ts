@@ -31,6 +31,8 @@ export const itemName = (i: CatalogItem) => i.n;
 export const itemOwner = (i: CatalogItem) => i.o;
 export const itemScore = (i: CatalogItem) => i.c;
 export const itemStars = (i: CatalogItem) => i.st;
+/** 近一月下载量；0 / undefined 都表示没有可用的 npm 分发数据 */
+export const itemDownloads = (i: CatalogItem) => i.dl ?? 0;
 export const itemTags = (i: CatalogItem) => i.g;
 export const itemDesc = (i: CatalogItem) => i.d;
 export const itemPushed = (i: CatalogItem) => i.u;
@@ -52,8 +54,13 @@ export function toCatalogItem(p: Plugin): CatalogItem {
     g: p.tags,
     d: (p.descriptionZh || p.description || "").slice(0, 160),
     u: p.pushedAt,
-    f: (p.install.needsConfig ? 1 : 0) | (p.install.risky ? 2 : 0) | (p.curated ? 4 : 0),
+    f:
+      (p.install.needsConfig ? 1 : 0) |
+      (p.install.risky ? 2 : 0) |
+      (p.curated ? 4 : 0) |
+      ((p.redLines ?? []).length ? 8 : 0),
     l: p.language,
+    dl: p.downloads ?? 0,
   };
 }
 

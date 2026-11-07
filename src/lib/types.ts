@@ -36,6 +36,25 @@ export interface Plugin {
   tags: string[];
   pushedAt: string;
   createdAt: string;
+
+  /* ---- 富化字段（来源：CC0 目录，可能全部为 null，页面必须降级） ---- */
+  /** npm 包名：有值说明是标准 npm 分发，安装命令可精确生成 */
+  npm?: string | null;
+  npmVersion?: string | null;
+  /** 近一个月 npm 下载量（比 star 更接近真实使用强度） */
+  downloads?: number | null;
+  /** 下载量统计区间，如 2026-10-08~2026-11-06 */
+  downloadsRange?: string | null;
+  /** 能力标签：fs-read / fs-write / network / shell / env / credentials / llm ... */
+  capabilities?: string[];
+  /** 安全红线：明文 http、安装期执行代码、读凭据+联网等 */
+  redLines?: string[];
+  /** 上游分类 slug 与中文名 */
+  cc0Category?: string | null;
+  cc0CategoryLabel?: string | null;
+  /** 该仓库下共有几个包（>1 表示 monorepo，当前只收录主包） */
+  packageCount?: number;
+
   score: {
     total: number;
     breakdown: ScoreBreakdown;
@@ -86,8 +105,10 @@ export interface CatalogItem {
   d: string;
   /** pushedAt */
   u: string;
-  /** 位标记：1=需配置 2=命令有风险 4=编辑精选 */
+  /** 位标记：1=需配置 2=命令有风险 4=编辑精选 8=有安全红线 */
   f: number;
   /** 语言 */
   l: string | null;
+  /** 近一月 npm 下载量（0 表示无 npm 分发） */
+  dl?: number;
 }

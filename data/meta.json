@@ -1,6 +1,6 @@
 {
   "generatedAt": "2026-11-07T04:24:56.556Z",
-  "builtAt": "2026-11-07T04:25:19.802Z",
+  "builtAt": "2026-11-07T05:09:20.470Z",
   "source": "github-api",
   "upstreamTotal": 4839,
   "included": 1600,
@@ -10,6 +10,10 @@
   },
   "curated": 0,
   "avgScore": 66,
+  "enriched": 817,
+  "withDownloads": 656,
+  "withCapabilities": 691,
+  "monorepo": 13,
   "topTags": [
     {
       "name": "DSH 插件",

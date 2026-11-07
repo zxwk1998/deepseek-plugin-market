@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowUpRight, Check, RotateCcw, Search, SlidersHorizontal, Star, X } from "lucide-react";
+import { ArrowUpRight, Check, Download, RotateCcw, Search, SlidersHorizontal, Star, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -11,13 +11,14 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { TypeChip } from "@/components/plugin-card";
 import { ScoreBadge } from "@/components/score";
 import { CATEGORIES } from "@/lib/taxonomy";
-import { scoreTier, formatCount } from "@/lib/format";
+import { scoreTier, formatCount, formatDownloads } from "@/lib/format";
 import {
   DEFAULT_STATE,
   activeFilterCount,
   facetTags,
   filterAndSort,
   itemDesc,
+  itemDownloads,
   itemLanguage,
   itemName,
   itemNeedsConfig,
@@ -517,6 +518,15 @@ function CatalogRow({ item }: { item: CatalogItem }) {
           <Star className="size-3" aria-hidden="true" />
           {formatCount(itemStars(item))}
         </span>
+        {itemDownloads(item) >= 100 && (
+          <span
+            className="hidden w-16 items-center gap-1 text-[11px] text-muted-foreground lg:inline-flex tnum"
+            title="近一个月 npm 下载量"
+          >
+            <Download className="size-3" aria-hidden="true" />
+            {formatDownloads(itemDownloads(item))}
+          </span>
+        )}
         <span className="w-9 text-right">
           <ScoreBadge total={itemScore(item)} tier={scoreTier(itemScore(item))} size="sm" />
         </span>
