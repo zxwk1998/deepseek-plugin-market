@@ -94,6 +94,13 @@ jobs:
 
       # 全量重渲染 → 所有页面内容都变，rsync 的差异算法没有收益，
       # 用 --whole-file 跳过校验和往返（5000 个文件 × RTT 就是几分钟）。
+      #
+      # --delay-updates：所有文件先写临时名，最后统一 rename 生效。
+      #   不加它的话，同步过程中线上是"一半旧一半新"，可能出现新 HTML 指向还没传上去的
+      #   资源；加上之后，访问者要么看到完整旧版、要么看到完整新版，中间没有破窗。
+      # --delete-after：删除放到最后，避免旧资源在传输途中被提前清掉。
+      # nice/ionice：这台机器上还有别的站点，把这次 265MB 的写入压到最低优先级，
+      #   别跟别人的请求抢 IO。
       - name: Rsync to server
         env:
           SSH_HOST: ${{ secrets.DEPLOY_HOST }}
@@ -101,7 +108,8 @@ jobs:
           SSH_USER: ${{ secrets.DEPLOY_USER }}
           TARGET: ${{ secrets.DEPLOY_PATH || '/www/wwwroot/vuejs-core.cn/deepseek-plugin-market' }}
         run: |
-          rsync -az --whole-file --inplace --compress-level=1 --delete --stats \
+          nice -n 19 ionice -c 3 rsync -az --whole-file --delay-updates --delete-after \
+            --compress-level=1 --stats \
             --exclude='.user.ini' --exclude='.htaccess' --exclude='.well-known/' \
             -e "ssh -i ~/.ssh/deploy_key -p ${SSH_PORT:-22} -o StrictHostKeyChecking=yes" \
             out/ "${SSH_USER}@${SSH_HOST}:${TARGET}/"

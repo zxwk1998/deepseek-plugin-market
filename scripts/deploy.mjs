@@ -267,9 +267,9 @@ function main() {
   const MODE =
     hasFlag("ssr") || args.includes("--mode=ssr")
       ? "ssr"
-      : hasFlag("rsync") || args.includes("--mode=rsync")
-        ? "rsync"
-        : "tar";
+      : hasFlag("tar") || args.includes("--mode=tar")
+        ? "tar"
+        : "rsync";
 
   if (MODE === "ssr") {
     deploySsr(ssh);
@@ -279,7 +279,8 @@ function main() {
       "-az",
       // 所有文件内容都变了，增量算法只带来往返开销，没有收益
       "--whole-file",
-      "--inplace",
+      // 先全部写临时名、最后统一 rename，线上不会出现"一半旧一半新"的中间态
+      "--delay-updates",
       "--compress-level=1",
       "--human-readable",
       "--stats",
@@ -289,7 +290,7 @@ function main() {
       "--exclude=.user.ini",
       "--exclude=.htaccess",
       "--exclude=.well-known/",
-      ...(hasFlag("no-delete") ? [] : ["--delete"]),
+      ...(hasFlag("no-delete") ? [] : ["--delete-after"]),
       ...(hasFlag("dry-run") ? ["--dry-run", "-v"] : []),
       "-e",
       `ssh ${ssh.join(" ")}`,
