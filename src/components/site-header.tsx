@@ -113,50 +113,57 @@ export function SiteHeader() {
                 <Menu className="size-4.5" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-[280px]">
+            {/* gap-0 + p-0：间距与内边距交给内部滚动容器统一控制，
+                避免默认 gap-4 与 sr-only 标题叠加出多余的 16px 空白 */}
+            <SheetContent side="right" className="w-[280px] max-w-[85vw] gap-0 p-0">
               <SheetTitle className="sr-only">导航菜单</SheetTitle>
-              <div className="mt-2 mb-6">
-                <BrandLockup />
-              </div>
-              <nav aria-label="移动端导航" className="flex flex-col">
-                {NAV.map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={() => setOpen(false)}
-                    className={cn(
-                      "border-b border-[var(--hairline)] py-3.5 text-[15px]",
-                      isActive(item.href) ? "font-medium" : "text-muted-foreground",
-                    )}
-                  >
-                    {item.label}
-                  </Link>
-                ))}
-                <Link
-                  href={SITE.repo}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                  className="flex items-center gap-2 border-b border-[var(--hairline)] py-3.5 text-[15px] text-muted-foreground"
-                >
-                  <GithubIcon className="size-4" />
-                  GitHub 仓库
-                </Link>
+              {/* 独立滚动容器：短屏、横屏或菜单变长时内容可滚，不会被裁掉 */}
+              <div className="flex h-full flex-col overflow-y-auto overscroll-contain px-5 pt-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))]">
+                {/* 与右上角关闭按钮同高的一行；pr-10 给关闭按钮让位，避免品牌文字被遮挡 */}
+                <div className="mb-4 flex h-8 items-center pr-10">
+                  <BrandLockup />
+                </div>
 
-                <p className="eyebrow mt-5 mb-1">相关站点</p>
-                {EXTERNAL_LINKS.map((item) => (
-                  <a
-                    key={item.href}
-                    href={item.href}
+                <nav aria-label="移动端导航" className="flex flex-col text-[15px]">
+                  {NAV.map((item) => (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={() => setOpen(false)}
+                      className={cn(
+                        "flex h-12 items-center border-b border-[var(--hairline)]",
+                        isActive(item.href) ? "font-medium" : "text-muted-foreground",
+                      )}
+                    >
+                      {item.label}
+                    </Link>
+                  ))}
+                  <Link
+                    href={SITE.repo}
                     target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={() => setOpen(false)}
-                    className="flex items-center justify-between py-3.5 text-[15px] text-muted-foreground transition-colors hover:text-foreground"
+                    rel="noreferrer noopener"
+                    className="flex h-12 items-center gap-2 border-b border-[var(--hairline)] text-muted-foreground"
                   >
-                    {item.label}
-                    <ArrowUpRight className="size-3.5 opacity-50" aria-hidden />
-                  </a>
-                ))}
-              </nav>
+                    <GithubIcon className="size-4" />
+                    GitHub 仓库
+                  </Link>
+
+                  <p className="eyebrow mt-6 mb-1">相关站点</p>
+                  {EXTERNAL_LINKS.map((item) => (
+                    <a
+                      key={item.href}
+                      href={item.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={() => setOpen(false)}
+                      className="flex h-12 items-center justify-between border-b border-[var(--hairline)] text-muted-foreground transition-colors last:border-0 hover:text-foreground"
+                    >
+                      {item.label}
+                      <ArrowUpRight className="size-3.5 opacity-50" aria-hidden />
+                    </a>
+                  ))}
+                </nav>
+              </div>
             </SheetContent>
           </Sheet>
         </div>
