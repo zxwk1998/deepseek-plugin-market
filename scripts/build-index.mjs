@@ -19,7 +19,12 @@ const index = plugins.map((p) => ({
   c: p.score.total,
   st: p.stars,
   g: p.tags,
-  d: (p.descriptionZh || p.description || "").slice(0, 160),
+  /*
+   * 描述截到 110 字：卡片是两行截断，再长也看不到；
+   * 但它是全文检索唯一可用的正文字段，砍太狠会掉召回。
+   * 2581 条时 160 字 → 414KB(gzip)，110 字 → 375KB，权衡后取 110。
+   */
+  d: (p.descriptionZh || p.description || "").slice(0, 110),
   u: p.pushedAt,
   f: (p.install.needsConfig ? 1 : 0) | (p.install.risky ? 2 : 0) | (p.curated ? 4 : 0) | ((p.redLines ?? []).length ? 8 : 0),
   l: p.language,

@@ -44,6 +44,25 @@ export function mostStarred(count = 6): Plugin[] {
   return [...plugins].sort((a, b) => b.stars - a.stars).slice(0, count);
 }
 
+/**
+ * 同仓库的其他包（monorepo 展开出来的兄弟条目）。
+ *
+ * 按仓库 id 分组 —— 主条目与子条目的 id 相同，所以这里要排除自己（按 slug）。
+ * 没有兄弟条目（绝大多数仓库）时返回空数组，页面据此决定是否渲染该区块。
+ */
+const byRepo = new Map<string, Plugin[]>();
+for (const p of plugins) {
+  const list = byRepo.get(p.id);
+  if (list) list.push(p);
+  else byRepo.set(p.id, [p]);
+}
+
+export function siblingsOf(plugin: Plugin): Plugin[] {
+  const group = byRepo.get(plugin.id) ?? [];
+  if (group.length < 2) return [];
+  return group.filter((p) => p.slug !== plugin.slug).sort((a, b) => (b.downloads ?? 0) - (a.downloads ?? 0));
+}
+
 export function countByCategory(slug: string): number {
   let n = 0;
   for (const p of plugins) {
@@ -69,7 +88,8 @@ export function relatedPlugins(plugin: Plugin, count = 4): Plugin[] {
   const own = new Set(plugin.tags.map((t) => t.toLowerCase()));
   const ownCats = new Set(categoriesOf(plugin).map((c) => c.slug));
   return plugins
-    .filter((p) => p.slug !== plugin.slug)
+    // 同仓库的其他包另有专区，别在这里重复出现
+    .filter((p) => p.id !== plugin.id)
     .map((p) => {
       const overlap = p.tags.filter((t) => own.has(t.toLowerCase())).length;
       const sameCat = categoriesOf(p).some((c) => ownCats.has(c.slug)) ? 1 : 0;

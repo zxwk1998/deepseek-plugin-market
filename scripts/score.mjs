@@ -161,13 +161,24 @@ export function detectType(repo) {
   return "cordis-plugin";
 }
 
+/**
+ * 平台级 topic：几乎所有仓库都打，出现在卡片上等于没信息（"DSH 插件" 占了 80%）。
+ * 这类标签必须先生成前就丢掉，否则中文标签永远排在最前面，把真实分类挤出去。
+ */
+const PLATFORM_TOPICS = new Set([
+  "dsh", "dsh-plugin", "dsh-plugins", "dsh-plugin-market", "dsh-bundle",
+  "deepseek", "deepseek-harness", "harness", "cordis", "cordis-plugin",
+  "plugin", "plugins", "skill", "skills", "agent-skills", "dsh-skills",
+  "agent", "agents", "ai", "llm", "typescript", "javascript",
+]);
+
 export function chineseTags(repo, limit = 6) {
   const topics = repo.topics ?? [];
   const out = [];
   const seen = new Set();
   for (const t of topics) {
     const lower = t.toLowerCase();
-    if (seen.has(lower)) continue;
+    if (seen.has(lower) || PLATFORM_TOPICS.has(lower)) continue;
     seen.add(lower);
     const zh = TOPIC_ZH[lower];
     if (zh) out.push(zh);
@@ -176,7 +187,9 @@ export function chineseTags(repo, limit = 6) {
   if (out.length < limit) {
     for (const t of topics) {
       if (out.length >= limit) break;
-      if (TOPIC_ZH[t.toLowerCase()]) continue;
+      const lower = t.toLowerCase();
+      if (PLATFORM_TOPICS.has(lower)) continue;
+      if (TOPIC_ZH[lower]) continue;
       if (t.length > 18) continue;
       if (out.includes(t)) continue;
       out.push(t);
@@ -187,9 +200,15 @@ export function chineseTags(repo, limit = 6) {
 
 const clamp = (n) => Math.max(0, Math.min(100, Math.round(n)));
 
-export function scoreRepo(repo, now = Date.now()) {
+/**
+ * @param {object} repo 采集到的仓库原始数据
+ * @param {number} now  快照时间戳（保证同一份数据重复评分结果稳定）
+ * @param {{downloads?: number|null}} extra 仓库本身没有、需要外部富化提供的信号
+ */
+export function scoreRepo(repo, now = Date.now(), extra = {}) {
   const pushedDays = (now - new Date(repo.pushedAt).getTime()) / DAY;
   const stars = repo.stars ?? 0;
+  const downloads = Number.isFinite(extra.downloads) ? extra.downloads : null;
   const readmeLen = (repo.readme ?? "").length;
   const descLen = (repo.description ?? "").length;
   const topics = repo.topics ?? [];
@@ -207,18 +226,30 @@ export function scoreRepo(repo, now = Date.now()) {
   else if (pushedDays <= 365) maintain = 32;
   else maintain = 12;
 
-  /* 实用度：描述说清问题 + 有 topic 分类 + 有主页 */
+  /*
+   * 实用度：描述说清问题 + 有 topic 分类 + 有主页。
+   * topic 只算"能区分项目"的那些 —— 每人都打的 dsh-plugin 不算分类能力。
+   */
+  const realTopics = topics.filter((t) => !PLATFORM_TOPICS.has(String(t).toLowerCase()));
   let practical = 0;
   if (descLen >= 120) practical += 52;
   else if (descLen >= 60) practical += 44;
   else if (descLen >= 24) practical += 34;
   else if (descLen > 0) practical += 20;
-  practical += Math.min(topics.length, 8) * 4;
+  practical += Math.min(realTopics.length, 8) * 4;
   if (repo.homepage) practical += 6;
   if (commands.length > 0) practical += 10;
 
-  /* 生态热度：对数压缩，避免一个 8 万星项目把量纲拉爆 */
-  const popularity = clamp((Math.log10(stars + 1) / 4.5) * 100);
+  /*
+   * 生态热度：对数压缩，避免一个 8 万星项目把量纲拉爆。
+   * star 衡量"有人关注"，npm 月下载衡量"真的在用" —— 两者经常背离
+   * （有的插件 3 个 star 但月下载 10 万）。取两者的较大值，谁强看谁，
+   * 不做加权求和，避免两项都平庸的项目被抬起来。
+   *   下载 1k → 60 分 · 1 万 → 80 分 · 10 万 → 100 分
+   */
+  const byStars = (Math.log10(stars + 1) / 4.5) * 100;
+  const byDownloads = downloads && downloads > 0 ? (Math.log10(downloads + 1) / 5) * 100 : 0;
+  const popularity = clamp(Math.max(byStars, byDownloads));
 
   /* 上手便捷：有命令、无额外配置、有许可证就高 */
   let ease = 42;
@@ -263,6 +294,7 @@ export function scoreRepo(repo, now = Date.now()) {
   else reasons.push("装完即可用，无需额外配置");
 
   if (stars >= 500) reasons.push(`${stars} stars，社区使用面较广`);
+  else if (downloads && downloads >= 1000) reasons.push(`近月 npm 下载 ${downloads} 次，star 不多但真在被使用`);
 
   return {
     total,

@@ -52,7 +52,7 @@ export function toCatalogItem(p: Plugin): CatalogItem {
     c: p.score.total,
     st: p.stars,
     g: p.tags,
-    d: (p.descriptionZh || p.description || "").slice(0, 160),
+    d: (p.descriptionZh || p.description || "").slice(0, 110),
     u: p.pushedAt,
     f:
       (p.install.needsConfig ? 1 : 0) |

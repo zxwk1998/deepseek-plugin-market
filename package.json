@@ -17,6 +17,7 @@
     "deploy:build": "node scripts/deploy.mjs --build",
     "ping": "node scripts/ping-search.mjs",
     "cc0": "node scripts/fetch-cc0.mjs",
+    "extra": "node scripts/fetch-extra-repos.mjs",
     "clean": "node scripts/clean.mjs"
   },
   "dependencies": {

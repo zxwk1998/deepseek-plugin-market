@@ -1,6 +1,6 @@
 /**
  * 插件数据模型 —— 与 scripts/build-data.mjs 的输出严格对应。
- * 上游 DSH 生态快照（1.8 万条）经裁剪后保留约 1600 条高信号条目。
+ * 上游 DSH 生态快照（1.8 万条）经裁剪后保留约 2000 条高信号条目。
  */
 
 export type PluginType = "skill" | "cordis-plugin";
@@ -20,7 +20,12 @@ export interface ScoreBreakdown {
 
 export interface Plugin {
   slug: string;
+  /** 仓库全名（owner/repo）—— 子条目与主条目共用，用于跳 GitHub、聚合同仓库插件 */
   id: string;
+  /** 去重键：主条目等于 id，子条目为 `owner/repo#子目录`。缺省时视为 id */
+  key?: string;
+  /** 有值说明本条是某仓库的子包，值为所属仓库 id */
+  siblingOf?: string;
   type: PluginType;
   name: string;
   owner: string;
@@ -52,8 +57,13 @@ export interface Plugin {
   /** 上游分类 slug 与中文名 */
   cc0Category?: string | null;
   cc0CategoryLabel?: string | null;
-  /** 该仓库下共有几个包（>1 表示 monorepo，当前只收录主包） */
+  /** 该仓库下共有几个包（>1 表示 monorepo） */
   packageCount?: number;
+  /**
+   * 评分口径：`repo` 表示分数取自整个仓库，不是这个包单独的。
+   * 单包没有独立信号，硬拆只会编造数据，所以子条目一律标注 repo。
+   */
+  scoreScope?: "repo";
 
   score: {
     total: number;

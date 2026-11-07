@@ -75,6 +75,9 @@ GitHub Search API  →  collect-github.mjs  →  raw-github.json
 总分 = 维护活跃 0.25 + 实用度 0.25 + 生态热度 0.20 + 上手便捷 0.15 + 信号质量 0.15
 ```
 
+生态热度取「star 折算分」与「npm 近月下载量折算分」中的**较大值**：
+两个信号经常背离（有的插件 3 个 star、月下载 10 万），谁强看谁，不做加权求和。
+
 每一维的判定都能回溯：推送距今多少天、README 里有没有可执行命令、是否要求 API Key、
 是否出现 `curl | sh` / 全局安装这类风险形态。详情页展示的"为什么是这个分数"就是这些事实拼出来的。
 
@@ -84,12 +87,17 @@ pnpm sync --limit 1200          # 调整收录条数
 pnpm sync --readme-top 800      # README 抓取数量（影响评分精度与耗时）
 pnpm sync --dry-run             # 只采集校验，不写目录数据
 pnpm sync --legacy              # 退回上游聚合快照（兼容旧流程，不推荐）
+
+pnpm cc0                        # 拉 CC0 目录（中文简介 / 下载量 / 能力标注的富化源）
+pnpm extra                      # 补采 CC0 里有下载量、但我们按 topic 检索漏掉的仓库
+pnpm extra --min-downloads 500 --limit 3000 --concurrency 8
 ```
 
 ### 每日自动更新
 
-这里的"每天更新"不是文案，是 `deploy.yml` 里的 cron 任务
+这里的"每天更新"不是文案，是 `deploy-server.yml` 里的 cron 任务
 （22:00 UTC = 次日 06:00 北京时间）：**采集 → 校验 → 构建 → 发布**。
+构建放在 GitHub Actions 而不是服务器上：这台 2 核 / 1.7GB 的机器预渲染 2000+ 页面会 OOM。
 
 三个刻意的设计取舍：
 

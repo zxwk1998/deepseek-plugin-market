@@ -47,9 +47,11 @@ next-env.d.ts
 
 # 采集原始产物（体积大，可由 pnpm sync 随时重建）
 /data/raw-github.json
-# 采集中间缓存：搜索结果（6h TTL）与 README（按 pushed_at 失效）
+# 采集中间缓存：搜索结果（6h TTL）、README（按 pushed_at 失效）、补采仓库（可续跑）
 /data/.search-cache.json
 /data/.readme-cache.json
+/data/.repo-cache.json
+/data/.cc0-catalog.json
 
 # 本地工作记录（含服务器地址、运维细节），属于内部信息，不进公开仓库
 /.workbuddy/

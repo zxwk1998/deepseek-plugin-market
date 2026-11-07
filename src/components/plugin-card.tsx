@@ -43,7 +43,9 @@ export function PluginCard({ plugin, showTags = true }: { plugin: Plugin; showTa
 
       <h3 className="mt-3 text-[14.5px] leading-snug font-semibold tracking-[-0.01em]">{plugin.name}</h3>
       <p className="mt-0.5 truncate font-mono text-[10.5px] text-muted-foreground">
-        {plugin.owner}/{plugin.id.split("/")[1] ?? plugin.name}
+        {plugin.id}
+        {/* 子包与主条目同仓库，不标一下会被误读成两个独立项目 */}
+        {plugin.siblingOf && <span className="ml-1.5 text-muted-foreground/60">· 子包</span>}
       </p>
 
       <p className="mt-2.5 line-clamp-2 min-h-[2.6em] text-[12.5px] leading-[1.6] text-muted-foreground text-pretty">

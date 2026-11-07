@@ -1,141 +1,145 @@
 {
-  "generatedAt": "2026-11-07T04:24:56.556Z",
-  "builtAt": "2026-11-07T05:20:06.792Z",
+  "generatedAt": "2026-11-07T05:37:56.529Z",
+  "builtAt": "2026-11-07T05:41:50.968Z",
   "source": "github-api",
-  "upstreamTotal": 4839,
-  "included": 1600,
+  "upstreamTotal": 6468,
+  "included": 2581,
   "types": {
-    "skill": 225,
-    "plugin": 1375
+    "skill": 311,
+    "plugin": 2270
   },
   "curated": 0,
-  "avgScore": 66,
-  "enriched": 816,
-  "withDownloads": 655,
-  "withCapabilities": 690,
-  "monorepo": 13,
+  "avgScore": 73,
+  "enriched": 1796,
+  "withDownloads": 1630,
+  "withCapabilities": 1469,
+  "monorepo": 23,
   "topTags": [
     {
-      "name": "DSH 插件",
-      "count": 1369
-    },
-    {
       "name": "MCP",
-      "count": 184
+      "count": 237
     },
     {
       "name": "claude-code",
-      "count": 129
-    },
-    {
-      "name": "Agent 技能",
-      "count": 108
+      "count": 194
     },
     {
       "name": "codex",
-      "count": 82
-    },
-    {
-      "name": "Cordis 插件",
-      "count": 61
-    },
-    {
-      "name": "智能体记忆",
-      "count": 59
-    },
-    {
-      "name": "记忆",
-      "count": 57
-    },
-    {
-      "name": "命令行工具",
-      "count": 56
-    },
-    {
-      "name": "多智能体协作",
-      "count": 54
-    },
-    {
-      "name": "coding-agent",
-      "count": 47
+      "count": 156
     },
     {
       "name": "developer-tools",
-      "count": 36
+      "count": 126
     },
     {
-      "name": "claude",
-      "count": 32
+      "name": "记忆",
+      "count": 82
     },
     {
-      "name": "自动化",
-      "count": 31
+      "name": "coding-agent",
+      "count": 82
     },
     {
-      "name": "ai-coding",
-      "count": 27
+      "name": "多智能体协作",
+      "count": 72
+    },
+    {
+      "name": "智能体记忆",
+      "count": 67
+    },
+    {
+      "name": "命令行工具",
+      "count": 64
+    },
+    {
+      "name": "windows",
+      "count": 51
+    },
+    {
+      "name": "electron",
+      "count": 47
+    },
+    {
+      "name": "local-first",
+      "count": 47
     },
     {
       "name": "主题",
-      "count": 27
+      "count": 44
     },
     {
-      "name": "桌面端",
-      "count": 26
-    },
-    {
-      "name": "检索增强",
-      "count": 26
+      "name": "claude",
+      "count": 44
     },
     {
       "name": "desktop-app",
-      "count": 26
+      "count": 44
     },
     {
-      "name": "android",
-      "count": 25
-    },
-    {
-      "name": "移动端",
-      "count": 25
-    },
-    {
-      "name": "agent-harness",
-      "count": 25
-    },
-    {
-      "name": "awesome-list",
-      "count": 24
+      "name": "界面增强",
+      "count": 40
     },
     {
       "name": "Token 统计",
-      "count": 23
+      "count": 39
+    },
+    {
+      "name": "审计",
+      "count": 39
+    },
+    {
+      "name": "markdown",
+      "count": 39
+    },
+    {
+      "name": "侧栏",
+      "count": 38
+    },
+    {
+      "name": "自动化",
+      "count": 37
+    },
+    {
+      "name": "ai-coding",
+      "count": 34
+    },
+    {
+      "name": "awesome-list",
+      "count": 34
+    },
+    {
+      "name": "android",
+      "count": 33
     }
   ],
   "languages": [
     {
       "name": "JavaScript",
-      "count": 723
+      "count": 1347
     },
     {
       "name": "TypeScript",
-      "count": 531
+      "count": 835
     },
     {
       "name": "Python",
-      "count": 186
-    },
-    {
-      "name": "Rust",
-      "count": 30
-    },
-    {
-      "name": "Go",
-      "count": 25
+      "count": 211
     },
     {
       "name": "HTML",
-      "count": 22
+      "count": 33
+    },
+    {
+      "name": "Rust",
+      "count": 31
+    },
+    {
+      "name": "Go",
+      "count": 26
+    },
+    {
+      "name": "Swift",
+      "count": 15
     },
     {
       "name": "Kotlin",
@@ -144,10 +148,6 @@
     {
       "name": "Shell",
       "count": 13
-    },
-    {
-      "name": "Swift",
-      "count": 11
     },
     {
       "name": "Java",

@@ -31,7 +31,7 @@ const hasFlag = (name) => args.includes(`--${name}`);
 
 const LEGACY = hasFlag("legacy");
 const DRY_RUN = hasFlag("dry-run");
-const LIMIT = getArg("limit", "1600");
+const LIMIT = getArg("limit", "2000");
 const MIN_REPOS = Number(getArg("min-repos", "80"));
 const MIN_UPSTREAM = Number(getArg("min-count", "5000"));
 const UPSTREAM_URL = getArg("url", process.env.UPSTREAM_DATA_URL || "");
@@ -125,6 +125,14 @@ async function main() {
     if (DRY_RUN) return console.log(`· --dry-run，未写入目录数据（采集 ${count} 个）`);
     // 富化层：拉 CC0 目录补中文简介/下载量/能力标注。抓不到不阻断（脚本内部降级）
     run("fetch-cc0.mjs", hasFlag("refresh") ? ["--refresh"] : []);
+    /*
+     * 补采：CC0 里我们按 topic 检索时完全覆盖不到的仓库（有真实下载量但没打 tag）。
+     * 每日只补一小批 —— 配额要和上面的 README 抓取共享 5000/小时，
+     * 靠 data/.repo-cache.json 续跑，新出现的仓库几天内自然补齐。
+     */
+    if (!hasFlag("no-extra")) {
+      run("fetch-extra-repos.mjs", ["--limit", getArg("extra-limit", "300"), "--concurrency", "6"]);
+    }
     run("build-data.mjs", ["--src", RAW, "--limit", LIMIT]);
     run("build-index.mjs");
   }

@@ -8,7 +8,8 @@ import { ScoreBars, ScoreRadar } from "@/components/score";
 import { JsonLd, breadcrumbJsonLd, pluginJsonLd } from "@/lib/seo";
 import { SITE, absUrl } from "@/lib/site";
 import { categoriesOf, SCORE_DIMENSIONS } from "@/lib/taxonomy";
-import { SNAPSHOT, allSlugs, getPlugin, plugins, relatedPlugins } from "@/lib/data";
+import { SNAPSHOT, allSlugs, getPlugin, plugins, relatedPlugins, siblingsOf } from "@/lib/data";
+import type { Plugin } from "@/lib/types";
 import {
   capabilityLabel,
   capabilityTone,
@@ -58,12 +59,11 @@ export default async function PluginPage({ params }: { params: Promise<{ slug: s
 
   const cats = categoriesOf(plugin);
   const related = relatedPlugins(plugin, 3);
+  const siblings = siblingsOf(plugin);
   const primaryCat = cats[0];
 
   const commands =
-    plugin.install.commands.length > 0
-      ? plugin.install.commands
-      : [defaultCommand(plugin.id, plugin.type)];
+    plugin.install.commands.length > 0 ? plugin.install.commands : [defaultCommand(plugin)];
   const commandsAreParsed = plugin.install.commands.length > 0;
 
   return (
@@ -122,7 +122,7 @@ export default async function PluginPage({ params }: { params: Promise<{ slug: s
             )}
             {(plugin.packageCount ?? 1) > 1 && (
               <span className="rounded border border-[var(--hairline)] px-1.5 py-0.5 font-mono text-[9.5px] tracking-[0.06em] text-muted-foreground">
-                多包仓库 · 共 {plugin.packageCount} 个
+                {plugin.siblingOf ? "同仓库子包" : "多包仓库"} · 共 {plugin.packageCount} 个
               </span>
             )}
           </div>
@@ -289,6 +289,26 @@ export default async function PluginPage({ params }: { params: Promise<{ slug: s
             )}
           </section>
 
+          {/* ============ 同仓库其他包：monorepo 里读者最容易找错入口的地方 ============ */}
+          {siblings.length > 0 && (
+            <section
+              className="mt-10 scroll-mt-24 border-t border-[var(--hairline)] pt-8"
+              aria-labelledby="siblings-heading"
+            >
+              <h2 id="siblings-heading" className="text-[17px] font-semibold tracking-[-0.02em]">
+                同仓库的其他插件
+              </h2>
+              <p className="mt-1 text-[12px] text-muted-foreground">
+                {plugin.id} 是一个多包仓库，下面这些都是可以单独安装的包 · 共 {plugin.packageCount} 个
+              </p>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                {siblings.map((p) => (
+                  <PluginCard key={p.slug} plugin={p} showTags={false} />
+                ))}
+              </div>
+            </section>
+          )}
+
           {/* ============ 安全能力：决定"敢不敢装"的信息，必须在正文里 ============ */}
           {((plugin.capabilities?.length ?? 0) > 0 || (plugin.redLines?.length ?? 0) > 0) && (
             <section
@@ -363,6 +383,11 @@ export default async function PluginPage({ params }: { params: Promise<{ slug: s
             <p className="mt-3 text-[13.5px] leading-[1.85] text-muted-foreground text-pretty">
               {plugin.score.explanation || "该条目数据信号较弱，评分仅供参考。"}
             </p>
+            {plugin.scoreScope === "repo" && (
+              <p className="mt-2 text-[11.5px] leading-relaxed text-muted-foreground/80">
+                该分数取自整个仓库 <span className="font-mono">{plugin.id}</span>，不是这个包单独算出来的。
+              </p>
+            )}
             <dl className="mt-5 grid grid-cols-2 gap-x-6 gap-y-3.5 sm:grid-cols-3">
               {SCORE_DIMENSIONS.map((dim) => (
                 <div key={dim.key} className="border-t border-[var(--hairline)] pt-2.5">
@@ -516,9 +541,11 @@ function toParagraphs(text: string, maxLen = 300): string[] {
   return paragraphs.slice(0, 8);
 }
 
-function defaultCommand(id: string, type: string): string {
-  if (type === "skill") return `npx skills add ${id}`;
-  return `dsh plugin --profile web add github:${id}`;
+function defaultCommand(plugin: Plugin): string {
+  // 有 npm 包就按包名装 —— 子包尤其需要，否则会装到整个仓库
+  if (plugin.npm) return `dsh plugin add ${plugin.npm}`;
+  if (plugin.type === "skill") return `npx skills add ${plugin.id}`;
+  return `dsh plugin --profile web add github:${plugin.id}`;
 }
 
 /** 相对排名：比裸分数更有解释力，且随数据自动变化 */

@@ -1,7 +1,7 @@
 name: Deploy to server (daily)
 
 # 为什么构建放在 GitHub Actions 而不是服务器上：
-#   服务器只有 2 核 / 1.7GB 内存（可用 ~370MB），Next 预渲染 1600 个详情页会 OOM。
+#   服务器只有 2 核 / 1.7GB 内存（可用 ~370MB），Next 预渲染 2000 个详情页会 OOM。
 #   Actions runner 有 16GB 内存，且自动注入 GITHUB_TOKEN（核心配额 5000/次），
 #   采集速度比本机未认证快一个数量级。构建完再 rsync 产物到静态目录。
 #
@@ -49,6 +49,20 @@ jobs:
 
       - name: Install
         run: pnpm install --frozen-lockfile
+
+      # 采集缓存跨运行复用：README 按 pushed_at 失效、补采仓库按需续跑，
+      # 命中缓存后每天的同步从"重抓 3000 次"降到"只抓增量"。
+      - name: Restore collection caches
+        uses: actions/cache@v4
+        with:
+          path: |
+            data/.search-cache.json
+            data/.readme-cache.json
+            data/.repo-cache.json
+            data/.cc0-catalog.json
+          key: dsh-collect-${{ github.run_id }}
+          restore-keys: |
+            dsh-collect-
 
       - name: Collect data from GitHub
         if: ${{ inputs.skip_collect != true }}
