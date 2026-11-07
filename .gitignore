@@ -59,3 +59,5 @@ next-env.d.ts
 # 构建产物旧版本（clean.mjs 挪走，等系统回收）
 /.trash/
 *.tar.gz
+# SQLite 中间产物（已回退到静态导出，不再需要）
+/data/site.db
