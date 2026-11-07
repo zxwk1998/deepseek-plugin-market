@@ -3,9 +3,8 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [main]
-  # 每天 22:00 UTC = 次日 06:00（北京时间）拉取上游最新快照并重新发布
-  schedule:
-    - cron: "0 22 * * *"
+  # 定时任务交给 deploy-server.yml：真正对外的是自建服务器，
+  # 两边都挂 cron 会每天重复采集两次，白白消耗 GitHub API 配额与 Actions 分钟数。
   workflow_dispatch:
 
 permissions:

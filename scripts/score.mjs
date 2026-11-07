@@ -82,7 +82,14 @@ const RISK_PATTERNS = [
   { re: /chmod\s+\+x\s+.*&&\s*\.\//i, reason: "下载后赋权并直接执行" },
 ];
 
-const COMMAND_RE = /^(?:\$\s+)?((?:npx|npm|pnpm|yarn|bun|git clone|dsh|pip|uv|brew)\s[^\n`]{3,160})$/gi;
+/**
+ * 单行安装命令。
+ * 注意：这里**不能加 g 标志** —— 带 g 时 String.match() 只返回整体匹配、
+ * 不返回捕获组，m[1] 会是 undefined；而且模块级正则带 g 会残留 lastIndex，
+ * 导致同一行第一次匹配成功、第二次莫名其妙失败。
+ */
+const COMMAND_RE =
+  /^(?:\$\s+)?((?:npx|npm|pnpm|yarn|bun|git clone|dsh|pip|uv|brew)\s[^\n`]{3,160})$/i;
 
 export function stripHtml(input) {
   if (!input) return "";
@@ -120,7 +127,7 @@ export function extractCommands(readme) {
   const seen = new Set();
   for (const line of readme.split("\n")) {
     const m = line.trim().match(COMMAND_RE);
-    if (!m) continue;
+    if (!m || !m[1]) continue;
     const cmd = m[1].trim().replace(/\s+/g, " ");
     if (cmd.length < 8 || seen.has(cmd)) continue;
     seen.add(cmd);

@@ -1,0 +1,110 @@
+name: Deploy to server (daily)
+
+# 为什么构建放在 GitHub Actions 而不是服务器上：
+#   服务器只有 2 核 / 1.7GB 内存（可用 ~370MB），Next 预渲染 1600 个详情页会 OOM。
+#   Actions runner 有 16GB 内存，且自动注入 GITHUB_TOKEN（核心配额 5000/次），
+#   采集速度比本机未认证快一个数量级。构建完再 rsync 产物到静态目录。
+#
+# 需要的仓库 Secrets：
+#   DEPLOY_SSH_KEY   部署私钥（能登录服务器的 ed25519 私钥全文）
+#   DEPLOY_HOST      服务器 IP
+#   DEPLOY_PORT      SSH 端口
+#   DEPLOY_USER      登录用户
+# 可选：
+#   DEPLOY_PATH      站点目录，默认 /www/wwwroot/vuejs-core.cn/deepseek-plugin-market
+#   BAIDU_PUSH_TOKEN 百度主动推送 token
+#   SITE_URL         站点根地址，默认 https://deepseek.vuejs-core.cn
+
+on:
+  schedule:
+    # UTC 22:00 = 北京时间次日 06:00，避开白天访问高峰
+    - cron: "0 22 * * *"
+  workflow_dispatch:
+    inputs:
+      skip_collect:
+        description: 跳过采集，用仓库里现有的数据直接构建
+        type: boolean
+        default: false
+
+concurrency:
+  # 定时任务和手动触发撞在一起时，取消旧的，避免两边同时 rsync 打架
+  group: deploy-server
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Collect data from GitHub
+        if: ${{ inputs.skip_collect != true }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: pnpm sync
+
+      - name: Lint & typecheck
+        run: |
+          pnpm lint
+          pnpm typecheck
+
+      - name: Build (static export)
+        env:
+          # 独立子域名 → 不要设 NEXT_PUBLIC_BASE_PATH，否则 _next 资源会 404
+          NEXT_PUBLIC_SITE_URL: ${{ vars.SITE_URL || 'https://deepseek.vuejs-core.cn' }}
+        run: pnpm build
+
+      - name: Setup SSH
+        env:
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          SSH_HOST: ${{ secrets.DEPLOY_HOST }}
+          SSH_PORT: ${{ secrets.DEPLOY_PORT }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -p "${SSH_PORT:-22}" -H "$SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Rsync to server
+        env:
+          SSH_HOST: ${{ secrets.DEPLOY_HOST }}
+          SSH_PORT: ${{ secrets.DEPLOY_PORT }}
+          SSH_USER: ${{ secrets.DEPLOY_USER }}
+          TARGET: ${{ secrets.DEPLOY_PATH || '/www/wwwroot/vuejs-core.cn/deepseek-plugin-market' }}
+        run: |
+          # 排除宝塔自己维护的文件：
+          #   .user.ini 是 chattr +i，删它会 exit 23；
+          #   .well-known 是 ACME 验证目录，被 --delete 清掉会导致证书续期失败。
+          rsync -az --delete --stats \
+            --exclude='.user.ini' --exclude='.htaccess' --exclude='.well-known/' \
+            -e "ssh -i ~/.ssh/deploy_key -p ${SSH_PORT:-22} -o StrictHostKeyChecking=yes" \
+            out/ "${SSH_USER}@${SSH_HOST}:${TARGET}/"
+
+      - name: Fix ownership & warm up
+        env:
+          SSH_HOST: ${{ secrets.DEPLOY_HOST }}
+          SSH_PORT: ${{ secrets.DEPLOY_PORT }}
+          SSH_USER: ${{ secrets.DEPLOY_USER }}
+          TARGET: ${{ secrets.DEPLOY_PATH || '/www/wwwroot/vuejs-core.cn/deepseek-plugin-market' }}
+        run: |
+          ssh -i ~/.ssh/deploy_key -p "${SSH_PORT:-22}" "${SSH_USER}@${SSH_HOST}" \
+            "find ${TARGET} -name .user.ini -prune -o -exec chown www:www {} + 2>/dev/null; echo done"
+
+      - name: Notify search engines
+        env:
+          SITE_URL: ${{ vars.SITE_URL || 'https://deepseek.vuejs-core.cn' }}
+          BAIDU_PUSH_TOKEN: ${{ secrets.BAIDU_PUSH_TOKEN }}
+        run: pnpm ping || echo "推送未成功，不影响已发布的站点"

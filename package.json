@@ -12,7 +12,10 @@
     "index": "node scripts/build-index.mjs",
     "data": "node scripts/build-data.mjs",
     "sync": "node scripts/sync-data.mjs",
-    "token": "node scripts/set-token.mjs"
+    "token": "node scripts/set-token.mjs",
+    "deploy": "node scripts/deploy.mjs",
+    "deploy:build": "node scripts/deploy.mjs --build",
+    "ping": "node scripts/ping-search.mjs"
   },
   "dependencies": {
     "class-variance-authority": "^0.7.1",
