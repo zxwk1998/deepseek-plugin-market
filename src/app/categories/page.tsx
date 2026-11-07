@@ -54,7 +54,9 @@ export default function CategoriesPage() {
         <ul className="grid gap-3 md:grid-cols-2">
           {cats.map((c) => (
             <li key={c.slug}>
-              <div className="group flex h-full flex-col rounded-xl border bg-card p-5 transition-colors hover:border-foreground/20">
+              {/* relative 必须保留：拉伸链接用 after:absolute after:inset-0，
+                  缺了定位上下文覆盖层会铺满整页，导致所有卡片都跳到最后一个分类 */}
+              <div className="group relative flex h-full flex-col rounded-xl border bg-card p-5 transition-colors hover:border-foreground/20">
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <h2 className="text-[16px] font-semibold tracking-[-0.01em]">
