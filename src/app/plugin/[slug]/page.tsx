@@ -8,7 +8,7 @@ import { ScoreBars, ScoreRadar } from "@/components/score";
 import { JsonLd, breadcrumbJsonLd, pluginJsonLd } from "@/lib/seo";
 import { SITE, absUrl } from "@/lib/site";
 import { categoriesOf, SCORE_DIMENSIONS } from "@/lib/taxonomy";
-import { SNAPSHOT, getPlugin, plugins, relatedPlugins, siblingsOf } from "@/lib/data";
+import { SNAPSHOT, allSlugs, getPlugin, plugins, relatedPlugins, siblingsOf } from "@/lib/data";
 import type { Plugin } from "@/lib/types";
 import {
   capabilityLabel,
@@ -23,13 +23,11 @@ import {
   typeLabel,
 } from "@/lib/format";
 
-/**
- * 按请求渲染（不再预生成 2581 个静态页）。
- * 页面内容仍是完整 HTML，爬虫拿到的东西和静态导出版本一致；
- * 差别只在"什么时候生成"——从构建期改成了第一次请求时。
- * 单页渲染约 20~40ms，配 nginx 反代缓存后接近静态。
- */
-export const revalidate = 600;
+export const dynamicParams = false;
+
+export function generateStaticParams() {
+  return allSlugs().map((slug) => ({ slug }));
+}
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;

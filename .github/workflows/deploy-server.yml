@@ -75,7 +75,7 @@ jobs:
           pnpm lint
           pnpm typecheck
 
-      - name: Build (standalone SSR)
+      - name: Build (static export)
         env:
           # 独立子域名 → 不要设 NEXT_PUBLIC_BASE_PATH，否则 _next 资源会 404
           NEXT_PUBLIC_SITE_URL: ${{ vars.SITE_URL || 'https://deepseek.vuejs-core.cn' }}
@@ -92,18 +92,29 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -p "${SSH_PORT:-22}" -H "$SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null
 
-      # 推送 .next/standalone（约 77MB）+ 重启 pm2。
-      # 数据（SQLite）随包一起走，所以日常更新只需 --data-only 那一步。
-      - name: Deploy to server
+      # 全量重渲染 → 所有页面内容都变，rsync 的差异算法没有收益，
+      # 用 --whole-file 跳过校验和往返（5000 个文件 × RTT 就是几分钟）。
+      - name: Rsync to server
         env:
-          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
-          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-          DEPLOY_SSH_KEY: /home/runner/.ssh/deploy_key
-          DEPLOY_URL: ${{ vars.SITE_URL || 'https://deepseek.vuejs-core.cn/' }}
-          SSR_PATH: ${{ vars.SSR_PATH || '/www/wwwroot/dsh-ssr' }}
-          SSR_PORT: ${{ vars.SSR_PORT || '3210' }}
-        run: node scripts/deploy.mjs --mode=ssr
+          SSH_HOST: ${{ secrets.DEPLOY_HOST }}
+          SSH_PORT: ${{ secrets.DEPLOY_PORT }}
+          SSH_USER: ${{ secrets.DEPLOY_USER }}
+          TARGET: ${{ secrets.DEPLOY_PATH || '/www/wwwroot/vuejs-core.cn/deepseek-plugin-market' }}
+        run: |
+          rsync -az --whole-file --inplace --compress-level=1 --delete --stats \
+            --exclude='.user.ini' --exclude='.htaccess' --exclude='.well-known/' \
+            -e "ssh -i ~/.ssh/deploy_key -p ${SSH_PORT:-22} -o StrictHostKeyChecking=yes" \
+            out/ "${SSH_USER}@${SSH_HOST}:${TARGET}/"
+
+      - name: Fix ownership & warm up
+        env:
+          SSH_HOST: ${{ secrets.DEPLOY_HOST }}
+          SSH_PORT: ${{ secrets.DEPLOY_PORT }}
+          SSH_USER: ${{ secrets.DEPLOY_USER }}
+          TARGET: ${{ secrets.DEPLOY_PATH || '/www/wwwroot/vuejs-core.cn/deepseek-plugin-market' }}
+        run: |
+          ssh -i ~/.ssh/deploy_key -p "${SSH_PORT:-22}" "${SSH_USER}@${SSH_HOST}" \
+            "find ${TARGET} -name .user.ini -prune -o -exec chown www:www {} + 2>/dev/null; echo done"
 
       - name: Notify search engines
         env:

@@ -1,14 +1,14 @@
-import { allPlugins, findPlugin, siteMeta } from "./db";
+import pluginsRaw from "../../data/plugins.json";
+import metaRaw from "../../data/meta.json";
 import type { MarketMeta, Plugin } from "./types";
 import { categoriesOf } from "./taxonomy";
 
 /**
- * 数据访问层（仅服务端使用）。
- * 数据来自 SQLite（data/site.db），由 scripts/build-db.mjs 从 plugins.json 生成。
- * 全量列表在进程内缓存一次 —— 2500 条约 6MB，比每次请求都查库划算。
+ * 数据访问层（仅构建期使用）。
+ * 数据在构建时打进产物，页面全部预渲染成实体 HTML —— 线上没有任何 Node 进程。
  */
-export const plugins = allPlugins();
-export const meta = siteMeta() as MarketMeta;
+export const plugins = pluginsRaw as unknown as Plugin[];
+export const meta = metaRaw as MarketMeta;
 
 /** 数据快照日：作为相对时间的统一基准，保证页面文本稳定 */
 import { SNAPSHOT } from "./snapshot";
@@ -17,8 +17,7 @@ export { SNAPSHOT, SNAPSHOT_DATE } from "./snapshot";
 const bySlug = new Map(plugins.map((p) => [p.slug, p]));
 
 export function getPlugin(slug: string): Plugin | undefined {
-  // 命中内存就直接返回；否则走 SQLite 主键查询（大目录时省掉一次全量扫描）
-  return bySlug.get(slug) ?? findPlugin(slug);
+  return bySlug.get(slug);
 }
 
 /** 全部 slug：generateStaticParams 用，构建期预渲染每个详情页 */

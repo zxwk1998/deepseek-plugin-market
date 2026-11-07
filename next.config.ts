@@ -1,19 +1,16 @@
 import type { NextConfig } from "next";
 
 /**
- * Node 运行时（output: "standalone"）。
+ * 纯静态导出（output: "export"）。
  *
- * 之前是纯静态导出：2581 个详情页 × 每页约 100KB HTML = 265MB 产物，
- * 而数据本身只有 6MB —— 体积全是"把每一页复制成一个文件"的成本。
- * 改成按请求渲染后：磁盘上只有一份数据（SQLite）+ 一个服务端进程，
- * 页面照旧是完整 HTML（SEO 不变），但不再有 2500 份重复拷贝。
- *
- * basePath 仍保留：子目录部署时 Next 会自己给资源加前缀。
+ * 站点托管在自建服务器 / 任意 CDN，不需要 Node 运行时，也不占服务器内存。
+ * 代价是每页都是一个实体 HTML 文件（2581 页约 265MB），发布时全量推送。
+ * 这是刻意的取舍：零进程、零内存、零崩溃面，换来的是磁盘与带宽。
  */
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
 
 const nextConfig: NextConfig = {
-  output: "standalone",
+  output: "export",
   trailingSlash: true,
   images: { unoptimized: true },
   basePath: basePath || undefined,

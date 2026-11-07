@@ -1,52 +1,37 @@
 #!/usr/bin/env node
 /**
- * 构建后打包（standalone）。
- *
- * Next 的 output: "standalone" 只产出 server.js + 最小 node_modules，
- * `.next/static` 与 `public/` 需要手工放进去，否则线上资源全部 404。
- * 数据文件（SQLite）也一并放进包内，部署时只传一个目录、不用管路径对应关系。
- *
- * 产物：.next/standalone/  ← 直接 rsync 到服务器即可运行
+ * 构建后处理：
+ * 1. 把品牌化 404 页面（/404/）复制为站点根目录的 404.html —— 静态托管对未知路径
+ *    的默认兜底文件，避免落到平台自带的丑陋错误页。
+ * 2. 打印产物概况，确认 SSG 真的跑完了。
  */
-import { cpSync, existsSync, readdirSync, statSync } from "node:fs";
+import { copyFileSync, existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { resolve } from "node:path";
 
-const STANDALONE = resolve(".next/standalone");
+const OUT = resolve("out");
 
-if (!existsSync(STANDALONE)) {
-  console.error("✗ .next/standalone 不存在，检查 next.config.ts 的 output 是否为 standalone");
+if (!existsSync(OUT)) {
+  console.error("out/ 不存在，请先执行 next build");
   process.exit(1);
 }
 
-const copies = [
-  [resolve(".next/static"), resolve(STANDALONE, ".next/static"), "静态资源"],
-  [resolve("public"), resolve(STANDALONE, "public"), "public"],
-  // 运行时数据：SQLite 是主数据源，JSON 作为兜底（两者都带，方便线上排障）
-  [resolve("data/site.db"), resolve(STANDALONE, "data/site.db"), "SQLite 数据"],
-  [resolve("data/plugins.json"), resolve(STANDALONE, "data/plugins.json"), "JSON 兜底"],
-  [resolve("data/meta.json"), resolve(STANDALONE, "data/meta.json"), "聚合统计"],
-];
-
-for (const [from, to, label] of copies) {
-  if (!existsSync(from)) {
-    console.warn(`! 缺少 ${from}，跳过（${label}）`);
-    continue;
-  }
-  cpSync(from, to, { recursive: true });
+const source = resolve(OUT, "404/index.html");
+if (existsSync(source)) {
+  copyFileSync(source, resolve(OUT, "404.html"));
+  console.log("✓ out/404.html（品牌化 404）");
+} else {
+  console.warn("! 未找到 out/404/index.html，跳过 404.html 生成");
 }
 
-function dirSize(dir) {
-  let total = 0;
-  const walk = (d) => {
-    for (const e of readdirSync(d, { withFileTypes: true })) {
-      const p = resolve(d, e.name);
-      if (e.isDirectory()) walk(p);
-      else total += statSync(p).size;
-    }
-  };
-  walk(dir);
-  return total;
-}
+/** 统计详情页数量，确认 SSG 真的跑完了 */
+const pluginDir = resolve(OUT, "plugin");
+const pluginPages = existsSync(pluginDir)
+  ? readdirSync(pluginDir).filter((d) => statSync(resolve(pluginDir, d)).isDirectory()).length
+  : 0;
 
-const mb = (n) => (n / 1048576).toFixed(1);
-console.log(`✓ .next/standalone  ${mb(dirSize(STANDALONE))} MB（含静态资源与数据）`);
+const sitemapPath = resolve(OUT, "sitemap.xml");
+const sitemapUrls = existsSync(sitemapPath)
+  ? (readFileSync(sitemapPath, "utf8").match(/<url>/g) ?? []).length
+  : 0;
+
+console.log(`  详情页 ${pluginPages} 个 · sitemap ${sitemapUrls} 条 URL`);
