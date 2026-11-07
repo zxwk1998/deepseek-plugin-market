@@ -25,9 +25,10 @@
  * 等于把服务器的运维入口直接贴在网上。凭据与拓扑一律留在 git 忽略的
  * .env.local 里，仓库中只保留字段名（见 .env.example）。
  */
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync, readdirSync, mkdtempSync } from "node:fs";
 import { spawnSync } from "node:child_process";
-import { resolve } from "node:path";
+import { resolve, join } from "node:path";
+import { tmpdir } from "node:os";
 
 const args = process.argv.slice(2);
 const hasFlag = (n) => args.includes(`--${n}`);
@@ -59,11 +60,83 @@ function fail(msg) {
   process.exit(1);
 }
 
-function run(cmd, cmdArgs, label) {
-  const r = spawnSync(cmd, cmdArgs, { stdio: "inherit" });
+function run(cmd, cmdArgs, label, opts = {}) {
+  const r = spawnSync(cmd, cmdArgs, { stdio: "inherit", ...opts });
   if (r.status !== 0) {
     console.error(`✗ ${label} 失败（exit ${r.status}）`);
     process.exit(1);
+  }
+}
+
+/** 递归列出相对路径（生成服务端差集删除用的清单） */
+function listFiles(dir, base = dir, out = []) {
+  for (const e of readdirSync(dir, { withFileTypes: true })) {
+    const full = join(dir, e.name);
+    if (e.isDirectory()) listFiles(full, base, out);
+    else if (e.isFile()) out.push(full.slice(base.length + 1));
+  }
+  return out;
+}
+
+/**
+ * 单流推送：本地打包 → 服务器原地解压 → 清单差集清理。
+ * 只建立两次 SSH 连接（传输 + 清理），不受文件数影响。
+ */
+function deployByTar(ssh) {
+  const files = listFiles(OUT);
+  const manifest = files.join("\n");
+
+  if (hasFlag("dry-run")) {
+    console.log(`· --dry-run：将打包 ${files.length} 个文件，跳过传输与清理`);
+    return;
+  }
+
+  // pigz 有就并行压，没有退 gzip；level 1 对 HTML 已经够（体积差 <5%，速度快 5 倍）
+  const hasPigz = spawnSync("sh", ["-c", "command -v pigz"], { encoding: "utf8" }).status === 0;
+  const compressor = hasPigz ? "pigz -1" : "gzip -1";
+
+  const t0 = Date.now();
+  console.log(`› 打包 ${files.length} 个文件 → ${USER}@${HOST}:${TARGET}（${compressor}）`);
+  // 不用 tar 的 --use-compress-program：macOS 自带的是 bsdtar，带参数会解析失败。
+  // 显式走管道更可控，也不依赖 tar 实现。
+  const pipeline =
+    `set -o pipefail; ` +
+    `tar -cf - -C '${OUT}' . ` +
+    `| ${compressor} ` +
+    `| ssh ${ssh.join(" ")} 'tar -xzf - -C ${TARGET}'`;
+  run("bash", ["-c", pipeline], "tar 推送");
+  console.log(`  ✓ 传输完成 ${((Date.now() - t0) / 1000).toFixed(1)}s`);
+
+  if (hasFlag("no-delete")) return;
+
+  /*
+   * 差集删除：服务器上存在、但本次清单里没有的文件 = 过期页面/旧 chunk。
+   * 清单通过 heredoc 直接塞进 shell，不额外建连接、不落本地临时文件。
+   * 宝塔自己的 .user.ini / .htaccess 与 ACME 的 .well-known 永远不参与比较。
+   */
+  const clean = [
+    "set -e",
+    `cd '${TARGET}'`,
+    "cat > /tmp/dsh-want.txt <<'WANTEOF'",
+    manifest,
+    "WANTEOF",
+    `find . -type f | sed 's|^\\./||' | grep -vE '^(\\.user\\.ini|\\.htaccess|\\.well-known/)' | LC_ALL=C sort > /tmp/dsh-have.txt`,
+    "LC_ALL=C sort -o /tmp/dsh-want.txt /tmp/dsh-want.txt",
+    "LC_ALL=C comm -13 /tmp/dsh-want.txt /tmp/dsh-have.txt > /tmp/dsh-del.txt || true",
+    `n=$(wc -l < /tmp/dsh-del.txt | tr -d ' ')`,
+    `if [ "$n" -gt 0 ]; then while IFS= read -r f; do rm -f -- "$f"; done < /tmp/dsh-del.txt; fi`,
+    "find . -type d -empty -delete 2>/dev/null || true",
+    "rm -f /tmp/dsh-want.txt /tmp/dsh-have.txt /tmp/dsh-del.txt",
+    'echo "  ✓ 清理 $n 个过期文件"',
+  ].join("\n");
+
+  const r = spawnSync("ssh", [...ssh, `${USER}@${HOST}`, "bash -s"], {
+    input: clean,
+    stdio: ["pipe", "inherit", "inherit"],
+  });
+  if (r.status !== 0) {
+    console.error(`✗ 服务端清理失败（exit ${r.status}）—— 文件已上传，页面可正常访问`);
+    process.exitCode = 1;
   }
 }
 
@@ -99,36 +172,47 @@ function main() {
 
   const ssh = ["-i", KEY, "-p", PORT, "-o", "StrictHostKeyChecking=accept-new", "-o", "ConnectTimeout=15"];
 
-  console.log(`› 同步 ${OUT}/ → ${USER}@${HOST}:${TARGET}`);
-  const rsyncArgs = [
-    "-az",
-    /*
-     * --whole-file：跳过 rsync 的差异算法。
-     * 每个页面 HTML 都是重新渲染的（分数/排序/相关推荐全会变），几乎 100% 内容不同，
-     * 走增量时每个文件都要来回一次校验和 —— 5000 个文件 × RTT 就是好几分钟，
-     * 而实际能省下的字节几乎为 0。整文件直传反而更快。
-     * --inplace：服务端原地写，省掉每个文件建临时文件 + rename 的开销。
-     * --compress-level=1：HTML 压缩比本身就高，level 1 与 9 体积差 3%，CPU 差 5 倍。
-     */
-    "--whole-file",
-    "--inplace",
-    "--compress-level=1",
-    "--human-readable",
-    "--stats",
-    // 宝塔在站点根自己维护的文件，不能传也不能删：
-    //   .user.ini / .htaccess 是 chattr +i 的，--delete 删它们必报 exit 23；
-    //   .well-known/ 是 ACME 证书验证目录，被 --delete 清掉会导致证书续期失败。
-    "--exclude=.user.ini",
-    "--exclude=.htaccess",
-    "--exclude=.well-known/",
-    ...(hasFlag("no-delete") ? [] : ["--delete"]),
-    ...(hasFlag("dry-run") ? ["--dry-run", "-v"] : []),
-    "-e",
-    `ssh ${ssh.join(" ")}`,
-    `${OUT}/`,
-    `${USER}@${HOST}:${TARGET}/`,
-  ];
-  run("rsync", rsyncArgs, "rsync 同步");
+  /*
+   * 传输方式：默认 tar 流。
+   *
+   * rsync 适合"只改几个文件"的日常增量，但每次重新构建后**所有页面都会变**
+   * （分数、排序、相关推荐全是重新算的），差异算法一分钱都省不下来，
+   * 反而要为 5000 个文件各来一次校验和往返 —— 高延迟链路下这就是几分钟。
+   * 打成一个流推过去、在服务器上原地解压，只走一次握手、压缩一次，实测快一个数量级。
+   *
+   * 代价是丢掉了 rsync 的 --delete，所以额外做一次清单对比：把"本次应该存在
+   * 的文件列表"传上去，服务器端算差集删掉多余文件（含旧的 _next chunk）。
+   * `--mode=rsync` 保留旧路径，排障时可用。
+   */
+  const MODE = hasFlag("rsync") || args.includes("--mode=rsync") ? "rsync" : "tar";
+
+  if (MODE === "rsync") {
+    console.log(`› 同步（rsync）${OUT}/ → ${USER}@${HOST}:${TARGET}`);
+    const rsyncArgs = [
+      "-az",
+      // 所有文件内容都变了，增量算法只带来往返开销，没有收益
+      "--whole-file",
+      "--inplace",
+      "--compress-level=1",
+      "--human-readable",
+      "--stats",
+      // 宝塔在站点根自己维护的文件，不能传也不能删：
+      //   .user.ini / .htaccess 是 chattr +i 的，--delete 删它们必报 exit 23；
+      //   .well-known/ 是 ACME 证书验证目录，被 --delete 清掉会导致证书续期失败。
+      "--exclude=.user.ini",
+      "--exclude=.htaccess",
+      "--exclude=.well-known/",
+      ...(hasFlag("no-delete") ? [] : ["--delete"]),
+      ...(hasFlag("dry-run") ? ["--dry-run", "-v"] : []),
+      "-e",
+      `ssh ${ssh.join(" ")}`,
+      `${OUT}/`,
+      `${USER}@${HOST}:${TARGET}/`,
+    ];
+    run("rsync", rsyncArgs, "rsync 同步");
+  } else {
+    deployByTar(ssh);
+  }
 
   if (hasFlag("dry-run")) {
     console.log("\n· --dry-run：以上为预览，未实际传输");
