@@ -3,12 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Menu, Search } from "lucide-react";
+import { Menu, Search, ArrowUpRight } from "lucide-react";
 import { BrandLockup, GithubIcon } from "@/components/brand";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { NAV, SITE } from "@/lib/site";
+import { EXTERNAL_LINKS, NAV, SITE } from "@/lib/site";
 import { cn } from "@/lib/utils";
 
 export function SiteHeader() {
@@ -39,7 +39,7 @@ export function SiteHeader() {
             <BrandLockup />
           </Link>
 
-          <nav aria-label="主导航" className="hidden items-center gap-1 md:flex">
+          <nav aria-label="主导航" className="hidden items-center gap-1 lg:flex">
             {NAV.map((item) => (
               <Link
                 key={item.href}
@@ -54,6 +54,26 @@ export function SiteHeader() {
               >
                 {item.label}
               </Link>
+            ))}
+
+            {/* 竖线把"站内导航"和"站外站点"分开，避免误以为点了还在本站 */}
+            <span aria-hidden className="mx-1.5 h-3.5 w-px bg-border" />
+
+            {EXTERNAL_LINKS.map((item) => (
+              <a
+                key={item.href}
+                href={item.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group inline-flex items-center gap-0.5 rounded-md px-2.5 py-1.5 text-[13.5px] text-muted-foreground transition-colors hover:text-foreground"
+              >
+                {item.label}
+                <ArrowUpRight
+                  className="size-3 opacity-40 transition-opacity group-hover:opacity-100"
+                  aria-hidden
+                />
+                <span className="sr-only">（在新窗口打开）</span>
+              </a>
             ))}
           </nav>
         </div>
@@ -89,7 +109,7 @@ export function SiteHeader() {
 
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon-sm" className="md:hidden" aria-label="打开菜单">
+              <Button variant="ghost" size="icon-sm" className="lg:hidden" aria-label="打开菜单">
                 <Menu className="size-4.5" />
               </Button>
             </SheetTrigger>
@@ -116,11 +136,26 @@ export function SiteHeader() {
                   href={SITE.repo}
                   target="_blank"
                   rel="noreferrer noopener"
-                  className="flex items-center gap-2 py-3.5 text-[15px] text-muted-foreground"
+                  className="flex items-center gap-2 border-b border-[var(--hairline)] py-3.5 text-[15px] text-muted-foreground"
                 >
                   <GithubIcon className="size-4" />
                   GitHub 仓库
                 </Link>
+
+                <p className="eyebrow mt-5 mb-1">相关站点</p>
+                {EXTERNAL_LINKS.map((item) => (
+                  <a
+                    key={item.href}
+                    href={item.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => setOpen(false)}
+                    className="flex items-center justify-between py-3.5 text-[15px] text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    {item.label}
+                    <ArrowUpRight className="size-3.5 opacity-50" aria-hidden />
+                  </a>
+                ))}
               </nav>
             </SheetContent>
           </Sheet>

@@ -37,6 +37,16 @@ export const NAV = [
   { href: "/guide", label: "评分方法" },
 ] as const;
 
+/**
+ * 站外友情链接（同一域名下的兄弟站点）。
+ * 与 NAV 分开定义的原因：这些是外链，渲染时要 target="_blank" + 外链箭头，
+ * 不能和站内路由混在一个数组里，否则很容易被误写成 next/link 而做站内跳转。
+ */
+export const EXTERNAL_LINKS = [
+  { href: "https://store.vuejs-core.cn", label: "模板市场" },
+  { href: "https://qdii.vuejs-core.cn", label: "天天养基" },
+] as const;
+
 /** 静态资源前缀：配合 GitHub Pages 的项目子路径 */
 export const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || "";
 
