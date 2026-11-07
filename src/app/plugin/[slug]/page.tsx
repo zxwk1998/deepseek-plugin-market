@@ -8,7 +8,7 @@ import { ScoreBars, ScoreRadar } from "@/components/score";
 import { JsonLd, breadcrumbJsonLd, pluginJsonLd } from "@/lib/seo";
 import { SITE, absUrl } from "@/lib/site";
 import { categoriesOf, SCORE_DIMENSIONS } from "@/lib/taxonomy";
-import { SNAPSHOT, allSlugs, getPlugin, plugins, relatedPlugins, siblingsOf } from "@/lib/data";
+import { SNAPSHOT, getPlugin, plugins, relatedPlugins, siblingsOf } from "@/lib/data";
 import type { Plugin } from "@/lib/types";
 import {
   capabilityLabel,
@@ -23,11 +23,13 @@ import {
   typeLabel,
 } from "@/lib/format";
 
-export const dynamicParams = false;
-
-export function generateStaticParams() {
-  return allSlugs().map((slug) => ({ slug }));
-}
+/**
+ * 按请求渲染（不再预生成 2581 个静态页）。
+ * 页面内容仍是完整 HTML，爬虫拿到的东西和静态导出版本一致；
+ * 差别只在"什么时候生成"——从构建期改成了第一次请求时。
+ * 单页渲染约 20~40ms，配 nginx 反代缓存后接近静态。
+ */
+export const revalidate = 600;
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
@@ -58,8 +60,10 @@ export default async function PluginPage({ params }: { params: Promise<{ slug: s
   if (!plugin) notFound();
 
   const cats = categoriesOf(plugin);
-  const related = relatedPlugins(plugin, 3);
-  const siblings = siblingsOf(plugin);
+  // 卡片只需要展示字段。readme 有 900 字，每个卡片带一份会让 RSC payload 翻倍
+  // （多包仓库的页面原本能到 260KB），传之前先剥掉。
+  const related = relatedPlugins(plugin, 3).map(toCard);
+  const siblings = siblingsOf(plugin).slice(0, 6).map(toCard);
   const primaryCat = cats[0];
 
   const commands =
@@ -539,6 +543,11 @@ function toParagraphs(text: string, maxLen = 300): string[] {
   }
   if (buffer.trim()) paragraphs.push(buffer.trim());
   return paragraphs.slice(0, 8);
+}
+
+/** 卡片视图用不到 README 正文，剥掉能显著减小页面里的 RSC payload */
+function toCard(p: Plugin): Plugin {
+  return p.readme ? { ...p, readme: "" } : p;
 }
 
 function defaultCommand(plugin: Plugin): string {

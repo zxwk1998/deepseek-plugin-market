@@ -5,7 +5,7 @@
   "description": "DeepSeek Harness（DSH）插件市场 —— 五维评分、中文目录、静态导出与 SEO 就绪",
   "scripts": {
     "dev": "node scripts/build-index.mjs && next dev",
-    "build": "node scripts/clean.mjs && node scripts/build-index.mjs && next build && node scripts/postbuild.mjs",
+    "build": "node scripts/clean.mjs && node scripts/build-index.mjs && node scripts/build-db.mjs && next build && node scripts/postbuild.mjs",
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
@@ -18,7 +18,10 @@
     "ping": "node scripts/ping-search.mjs",
     "cc0": "node scripts/fetch-cc0.mjs",
     "extra": "node scripts/fetch-extra-repos.mjs",
-    "clean": "node scripts/clean.mjs"
+    "clean": "node scripts/clean.mjs",
+    "db": "node scripts/build-db.mjs",
+    "deploy:ssr": "node scripts/deploy.mjs --mode=ssr",
+    "deploy:data": "node scripts/deploy.mjs --mode=ssr --data-only"
   },
   "dependencies": {
     "class-variance-authority": "^0.7.1",

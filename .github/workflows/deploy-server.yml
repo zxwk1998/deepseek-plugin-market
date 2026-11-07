@@ -75,7 +75,7 @@ jobs:
           pnpm lint
           pnpm typecheck
 
-      - name: Build (static export)
+      - name: Build (standalone SSR)
         env:
           # 独立子域名 → 不要设 NEXT_PUBLIC_BASE_PATH，否则 _next 资源会 404
           NEXT_PUBLIC_SITE_URL: ${{ vars.SITE_URL || 'https://deepseek.vuejs-core.cn' }}
@@ -92,30 +92,18 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -p "${SSH_PORT:-22}" -H "$SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null
 
-      - name: Rsync to server
+      # 推送 .next/standalone（约 77MB）+ 重启 pm2。
+      # 数据（SQLite）随包一起走，所以日常更新只需 --data-only 那一步。
+      - name: Deploy to server
         env:
-          SSH_HOST: ${{ secrets.DEPLOY_HOST }}
-          SSH_PORT: ${{ secrets.DEPLOY_PORT }}
-          SSH_USER: ${{ secrets.DEPLOY_USER }}
-          TARGET: ${{ secrets.DEPLOY_PATH || '/www/wwwroot/vuejs-core.cn/deepseek-plugin-market' }}
-        run: |
-          # 排除宝塔自己维护的文件：
-          #   .user.ini 是 chattr +i，删它会 exit 23；
-          #   .well-known 是 ACME 验证目录，被 --delete 清掉会导致证书续期失败。
-          rsync -az --delete --stats \
-            --exclude='.user.ini' --exclude='.htaccess' --exclude='.well-known/' \
-            -e "ssh -i ~/.ssh/deploy_key -p ${SSH_PORT:-22} -o StrictHostKeyChecking=yes" \
-            out/ "${SSH_USER}@${SSH_HOST}:${TARGET}/"
-
-      - name: Fix ownership & warm up
-        env:
-          SSH_HOST: ${{ secrets.DEPLOY_HOST }}
-          SSH_PORT: ${{ secrets.DEPLOY_PORT }}
-          SSH_USER: ${{ secrets.DEPLOY_USER }}
-          TARGET: ${{ secrets.DEPLOY_PATH || '/www/wwwroot/vuejs-core.cn/deepseek-plugin-market' }}
-        run: |
-          ssh -i ~/.ssh/deploy_key -p "${SSH_PORT:-22}" "${SSH_USER}@${SSH_HOST}" \
-            "find ${TARGET} -name .user.ini -prune -o -exec chown www:www {} + 2>/dev/null; echo done"
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: /home/runner/.ssh/deploy_key
+          DEPLOY_URL: ${{ vars.SITE_URL || 'https://deepseek.vuejs-core.cn/' }}
+          SSR_PATH: ${{ vars.SSR_PATH || '/www/wwwroot/dsh-ssr' }}
+          SSR_PORT: ${{ vars.SSR_PORT || '3210' }}
+        run: node scripts/deploy.mjs --mode=ssr
 
       - name: Notify search engines
         env:

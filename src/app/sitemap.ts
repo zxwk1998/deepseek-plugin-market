@@ -3,7 +3,8 @@ import { CATEGORIES } from "@/lib/taxonomy";
 import { plugins } from "@/lib/data";
 import { SITE } from "@/lib/site";
 
-export const dynamic = "force-static";
+// 由 SQLite 实时生成：数据更新后一小时内的 sitemap 就会反映出来，无需重新构建
+export const revalidate = 3600;
 
 /**
  * 全站 sitemap：静态页 + 分类页 + 全部插件详情页。

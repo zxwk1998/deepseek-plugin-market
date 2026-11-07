@@ -25,10 +25,9 @@
  * 等于把服务器的运维入口直接贴在网上。凭据与拓扑一律留在 git 忽略的
  * .env.local 里，仓库中只保留字段名（见 .env.example）。
  */
-import { existsSync, readFileSync, writeFileSync, readdirSync, mkdtempSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { resolve, join } from "node:path";
-import { tmpdir } from "node:os";
 
 const args = process.argv.slice(2);
 const hasFlag = (n) => args.includes(`--${n}`);
@@ -53,7 +52,12 @@ const USER = process.env.DEPLOY_USER || "";
 const KEY = process.env.DEPLOY_SSH_KEY || "";
 const TARGET = process.env.DEPLOY_PATH || "";
 const SITE_URL = process.env.DEPLOY_URL || "https://deepseek.vuejs-core.cn/";
+/** SSR 版：应用目录（不在 web root 内，避免源码被当静态文件读）与监听端口 */
+const SSR_PATH = process.env.SSR_PATH || "/www/wwwroot/dsh-ssr";
+const SSR_PORT = process.env.SSR_PORT || "3210";
+const APP_NAME = process.env.SSR_APP_NAME || "dsh-ssr";
 const OUT = resolve("out");
+const STANDALONE = resolve(".next/standalone");
 
 function fail(msg) {
   console.error(`✗ ${msg}`);
@@ -76,6 +80,82 @@ function listFiles(dir, base = dir, out = []) {
     else if (e.isFile()) out.push(full.slice(base.length + 1));
   }
   return out;
+}
+
+/**
+ * SSR 发布：把 .next/standalone 推到应用目录，用 pm2 拉起/重启。
+ *
+ * 为什么不再往 web root 塞文件：
+ *   站点改成"按请求渲染"后，磁盘上只有一份数据 + 一个进程，
+ *   数据更新只要替换 data/site.db 再重启，不需要重新构建、不需要传 2600 个页面。
+ *
+ * `--data-only` 只同步数据文件并重启，用于每日数据刷新（几 MB、几秒）。
+ */
+function deploySsr(ssh) {
+  const dataOnly = hasFlag("data-only");
+
+  if (!dataOnly && !existsSync(join(STANDALONE, "server.js"))) {
+    fail("找不到 .next/standalone/server.js，先执行 pnpm build");
+  }
+
+  if (dataOnly) {
+    console.log(`› 只同步数据 → ${USER}@${HOST}:${SSR_PATH}/data`);
+    run(
+      "rsync",
+      [
+        "-az",
+        "--info=stats1",
+        "-e",
+        `ssh ${ssh.join(" ")}`,
+        "data/site.db",
+        "data/plugins.json",
+        "data/meta.json",
+        `${USER}@${HOST}:${SSR_PATH}/data/`,
+      ],
+      "数据同步",
+    );
+  } else {
+    const files = listFiles(STANDALONE);
+    const t0 = Date.now();
+    console.log(`› 推送运行包 ${files.length} 个文件 → ${SSR_PATH}（gzip -1）`);
+    const pipeline =
+      `set -o pipefail; ` +
+      `tar -cf - -C '${STANDALONE}' . | gzip -1 ` +
+      `| ssh ${ssh.join(" ")} ${USER}@${HOST} 'mkdir -p ${SSR_PATH} && tar -xzf - -C ${SSR_PATH}'`;
+    run("bash", ["-c", pipeline], "运行包推送");
+    console.log(`  ✓ 传输完成 ${((Date.now() - t0) / 1000).toFixed(1)}s`);
+  }
+
+  // pm2：首次 start，之后 reload。内存上限卡在 340M —— 这台机器只剩 300MB 左右，
+  // 超过就让 pm2 重启，总比把整台机器拖进 swap 好。
+  console.log("› 重启应用");
+  const startCmd = [
+    `cd ${SSR_PATH}`,
+    `PORT=${SSR_PORT} HOSTNAME=127.0.0.1 NODE_ENV=production NODE_OPTIONS=--max-old-space-size=256`,
+    `pm2 startOrReload server.js --name ${APP_NAME} --max-memory-restart 340M --update-env`,
+  ].join(" && ");
+  const r = spawnSync("ssh", [...ssh, `${USER}@${HOST}`, `${startCmd} >/dev/null 2>&1 || (${startCmd})`], {
+    stdio: "inherit",
+  });
+  if (r.status !== 0) fail("pm2 启动失败");
+  run("ssh", [...ssh, `${USER}@${HOST}`, "pm2 save >/dev/null 2>&1; sleep 2; pm2 list | sed -n '1,6p'"], "pm2 状态");
+
+  console.log("› 健康检查");
+  const health = spawnSync(
+    "ssh",
+    [
+      ...ssh,
+      `${USER}@${HOST}`,
+      `curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:${SSR_PORT}/ && echo ' 首页' ` +
+        `&& curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:${SSR_PORT}/plugin/ruvnet-ruflo/ && echo ' 详情页'`,
+    ],
+    { encoding: "utf8" },
+  );
+  console.log((health.stdout || "").trim());
+  if (!(health.stdout || "").includes("200")) {
+    console.error("  ! 应用未返回 200，检查 pm2 logs " + APP_NAME);
+    process.exitCode = 1;
+  }
 }
 
 /**
@@ -103,7 +183,7 @@ function deployByTar(ssh) {
     `set -o pipefail; ` +
     `tar -cf - -C '${OUT}' . ` +
     `| ${compressor} ` +
-    `| ssh ${ssh.join(" ")} 'tar -xzf - -C ${TARGET}'`;
+    `| ssh ${ssh.join(" ")} ${USER}@${HOST} 'tar -xzf - -C ${TARGET}'`;
   run("bash", ["-c", pipeline], "tar 推送");
   console.log(`  ✓ 传输完成 ${((Date.now() - t0) / 1000).toFixed(1)}s`);
 
@@ -165,7 +245,7 @@ function main() {
     run("pnpm", ["build"], "构建");
   }
 
-  if (!existsSync(`${OUT}/index.html`)) {
+  if (!hasFlag("mode=ssr") && !args.includes("--mode=ssr") && !existsSync(`${OUT}/index.html`)) {
     console.error(`✗ ${OUT}/index.html 不存在，先执行 pnpm build（或加 --build）`);
     process.exit(1);
   }
@@ -184,9 +264,16 @@ function main() {
    * 的文件列表"传上去，服务器端算差集删掉多余文件（含旧的 _next chunk）。
    * `--mode=rsync` 保留旧路径，排障时可用。
    */
-  const MODE = hasFlag("rsync") || args.includes("--mode=rsync") ? "rsync" : "tar";
+  const MODE =
+    hasFlag("ssr") || args.includes("--mode=ssr")
+      ? "ssr"
+      : hasFlag("rsync") || args.includes("--mode=rsync")
+        ? "rsync"
+        : "tar";
 
-  if (MODE === "rsync") {
+  if (MODE === "ssr") {
+    deploySsr(ssh);
+  } else if (MODE === "rsync") {
     console.log(`› 同步（rsync）${OUT}/ → ${USER}@${HOST}:${TARGET}`);
     const rsyncArgs = [
       "-az",
@@ -216,6 +303,16 @@ function main() {
 
   if (hasFlag("dry-run")) {
     console.log("\n· --dry-run：以上为预览，未实际传输");
+    return;
+  }
+
+  // SSR 模式不走下面的静态目录逻辑：文件不在 web root，归属由 pm2 的运行用户决定
+  if (MODE === "ssr") {
+    console.log(`› 校验线上页面：${SITE_URL}`);
+    const check = spawnSync("curl", ["-sS", "-m", "20", "-o", "/dev/null", "-w", "%{http_code}", SITE_URL], {
+      encoding: "utf8",
+    });
+    console.log(`  HTTP ${(check.stdout || "").trim() || "(无响应)"}`);
     return;
   }
 
