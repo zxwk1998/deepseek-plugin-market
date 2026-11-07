@@ -107,8 +107,13 @@ export function redLineLabel(text: string): string {
     return "安装时执行代码（postinstall 脚本）";
   }
   if (/uses plaintext http:\/\//i.test(t)) {
-    const host = t.match(/http:\/\/([^\s,，]+)/i)?.[1] ?? "";
-    return `以明文 http 连接 ${host}（可被中间人篡改）`;
+    // 上游有的条目是 `http:// to $redteam_vps_host:9100` 这种模板变量，
+    // 直接把 $ 开头的东西展示给用户等于噪音，这种情况只给通用描述
+    const raw = t.match(/http:\/\/\s*(?:to\s+)?([^\s,，、]+)/i)?.[1] ?? "";
+    const host = raw && !raw.startsWith("$") ? raw.replace(/[.。;；:：]+$/, "") : "";
+    return host
+      ? `以明文 http 连接 ${host}（可被中间人篡改）`
+      : "以明文 http 传输数据（可被中间人篡改）";
   }
   if (/uses literal IP/i.test(t)) {
     const ip = t.match(/\b\d{1,3}(?:\.\d{1,3}){3}\b/)?.[0] ?? "";

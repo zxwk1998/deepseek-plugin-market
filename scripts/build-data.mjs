@@ -102,7 +102,12 @@ function fromGithub(payload) {
         /* ---- 以下为富化字段：可能为 null，前端必须做降级 ---- */
         npm: x?.npm ?? null,
         npmVersion: x?.version ?? null,
-        downloads: Number.isFinite(x?.downloads) ? x.downloads : null,
+        /**
+         * 下载量只在有 npm 包时才有意义。
+         * 上游对没有 npm 分发的条目也会给 downloads: 0 —— 直接透传会让页面显示
+         * 「近月下载 0」，读起来像"测过，确实没人下载"，与"根本没有 npm 包"是两回事。
+         */
+        downloads: x?.npm && Number.isFinite(x?.downloads) ? x.downloads : null,
         downloadsRange: x?.downloadsStart && x?.downloadsEnd ? `${x.downloadsStart}~${x.downloadsEnd}` : null,
         capabilities: x?.cap ?? [],
         redLines: x?.red ?? [],
