@@ -225,22 +225,20 @@ Star 数衡量的是"有多少人点过收藏"，与"现在还能不能用"相�
 线上站点由 `deploy-server.yml` 每日构建后 rsync 到静态目录，构建与发布解耦：
 
 ```bash
-pnpm build       # 产物在 out/
-pnpm deploy      # 发布已有 out/（差量传输）
-pnpm deploy:build
+pnpm build        # 静态导出到 out/，末尾自动跑 postbuild（404 兜底 + 域名校验）
+pnpm deploy       # 发布已有 out/（差量传输，只传变更文件）
+pnpm deploy:build # 先构建再发布
 ```
 
-```bash
-pnpm build       # 纯静态目录，可直接丢给对象存储 / CDN / Nginx，无需 Node 运行时
-```
+`out/` 是纯静态目录，也可直接丢给对象存储 / CDN / Nginx，无需 Node 运行时。
 
-构建前必须设置 `NEXT_PUBLIC_SITE_URL=https://deepseek.vuejs-core.cn`（CI 已内置默认值），
-否则 canonical 与 sitemap 会指向错误的域名——`postbuild` 会拦住这种产物。
+构建前必须确认 `NEXT_PUBLIC_SITE_URL=https://deepseek.vuejs-core.cn`（CI 已内置默认值，本地默认值同源），
+否则 canonical 与 sitemap 会指向错误的域名——`postbuild` 会拦住这种产物，不会发布出去。
 
 ### GitHub Pages（可选镜像）
 
 `.github/workflows/deploy.yml` 会在 push 到 `main` 时构建并发布到 Pages，仓库 Settings → Pages →
-Source 选择 **GitHub Actions** 才会生效。镜像用于备份与预览，**规范地址始终是自建域名**。
+Source 选择 **GitHub Actions** 才会生效（当前未启用）。镜像用于备份与预览，**规范地址始终是自建域名**。
 
 ## 目录结构
 
